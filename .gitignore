@@ -58,3 +58,7 @@ bld/
 # User settings
 appsettings.Development.json
 appsettings.Local.json
+
+# Docker & Environment
+.env
+docker-compose.override.yml
