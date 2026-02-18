@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ParcelTracking.Api/ParcelTracking.Api.csproj" />
+    <Project Path="src/ParcelTracking.Application/ParcelTracking.Application.csproj" />
+    <Project Path="src/ParcelTracking.Domain/ParcelTracking.Domain.csproj" />
+    <Project Path="src/ParcelTracking.Infrastructure/ParcelTracking.Infrastructure.csproj" />
+  </Folder>
+</Solution>
