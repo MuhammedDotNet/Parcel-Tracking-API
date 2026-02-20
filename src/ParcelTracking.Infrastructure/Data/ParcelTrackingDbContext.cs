@@ -20,5 +20,8 @@ public class ParcelTrackingDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ParcelTrackingDbContext).Assembly);
+
     }
+
+    
 }
