@@ -62,6 +62,16 @@ builder.Services.AddControllers();
 
 var app = builder.Build();
 
+// Seed database if --seed argument is provided
+if (args.Contains("--seed"))
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<ParcelTrackingDbContext>();
+    await DataSeeder.SeedAsync(db);
+    Console.WriteLine("Database seeded successfully.");
+    return;
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
