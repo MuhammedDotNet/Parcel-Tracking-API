@@ -1,3 +1,6 @@
+using Microsoft.EntityFrameworkCore;
+using ParcelTracking.Infrastructure.Data;
+
 var builder = WebApplication.CreateBuilder(args);
 
 
