@@ -1,9 +1,15 @@
 using Microsoft.EntityFrameworkCore;
 using ParcelTracking.Infrastructure.Data;
+using ParcelTracking.Application.Services;
+using ParcelTracking.Infrastructure.Repositories;
 using Microsoft.OpenApi;
 using Microsoft.AspNetCore.Authentication;
 using ParcelTracking.Api.Authentication;
 using Scalar.AspNetCore;
+using FluentValidation;
+using FluentValidation.AspNetCore;
+using ParcelTracking.Application.Interfaces;
+using ParcelTracking.Application.Validators;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -57,6 +63,14 @@ builder.Services.AddOpenApi("v1", options =>
     });
 });
 
+// FluentValidation
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddValidatorsFromAssemblyContaining<CreateAddressRequestValidator>();
+
+// Application Services
+builder.Services.AddScoped<IAddressRepository, AddressRepository>();
+builder.Services.AddScoped<IAddressService, AddressService>();
+
 // Controllers
 builder.Services.AddControllers();
 
@@ -81,5 +95,6 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapControllers();
 
 app.Run();
