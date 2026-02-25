@@ -25,4 +25,17 @@ public sealed class ParcelRepository : IParcelRepository
 
     public Task<bool> AddressExistsAsync(int addressId, CancellationToken ct)
         => _db.Addresses.AnyAsync(a => a.Id == addressId, ct);
+
+    public Task<Parcel?> GetByIdWithDetailsAsync(int id, CancellationToken ct)
+        => _db.Parcels
+            .Include(p => p.ShipperAddress)
+            .Include(p => p.RecipientAddress)
+            .Include(p => p.ContentItems)
+            .FirstOrDefaultAsync(p => p.Id == id, ct);
+
+    public Task<Parcel?> GetByTrackingNumberWithRecipientAsync(
+        string trackingNumber, CancellationToken ct)
+        => _db.Parcels
+            .Include(p => p.RecipientAddress)
+            .FirstOrDefaultAsync(p => p.TrackingNumber == trackingNumber, ct);
 }
