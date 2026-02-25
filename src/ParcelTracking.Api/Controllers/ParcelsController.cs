@@ -10,10 +10,16 @@ namespace ParcelTracking.Api.Controllers;
 [Route("api/[controller]")]
 public class ParcelsController : ControllerBase
 {
-    private readonly IParcelRegistrationService _service;
+    private readonly IParcelRegistrationService _registrationService;
+    private readonly IParcelRetrievalService _retrievalService;
 
-    public ParcelsController(IParcelRegistrationService service)
-        => _service = service;
+    public ParcelsController(
+        IParcelRegistrationService registrationService,
+        IParcelRetrievalService retrievalService)
+    {
+        _registrationService = registrationService;
+        _retrievalService = retrievalService;
+    }
 
     /// <summary>Register a new parcel and generate a tracking number.</summary>
     [HttpPost]
@@ -26,11 +32,11 @@ public class ParcelsController : ControllerBase
     {
         try
         {
-            var response = await _service.RegisterAsync(request, ct);
+            var response = await _registrationService.RegisterAsync(request, ct);
 
             return CreatedAtAction(
-                nameof(GetByTrackingNumber),
-                new { trackingNumber = response.TrackingNumber },
+                nameof(GetById),
+                new { id = response.Id },
                 response);
         }
         catch (KeyNotFoundException ex)
@@ -45,10 +51,25 @@ public class ParcelsController : ControllerBase
         }
     }
 
-    /// <summary>Get a parcel by tracking number. (Placeholder — implemented in a future lesson.)</summary>
-    [HttpGet("{trackingNumber}")]
-    [ProducesResponseType(typeof(ParcelResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public IActionResult GetByTrackingNumber(string trackingNumber)
-        => NotFound();
+    /// <summary>Get full parcel details by internal ID (internal use).</summary>
+    [HttpGet("{id:int}")]
+    [ProducesResponseType(typeof(ParcelDetailResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetById(int id, CancellationToken ct)
+    {
+        var response = await _retrievalService.GetByIdAsync(id, ct);
+
+        if (response is null)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = "Parcel Not Found",
+                Detail = $"No parcel exists with ID '{id}'.",
+                Status = StatusCodes.Status404NotFound,
+                Instance = HttpContext.Request.Path
+            });
+        }
+
+        return Ok(response);
+    }
 }

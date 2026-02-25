@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using ParcelTracking.Infrastructure.Data;
 using ParcelTracking.Application.Services;
+using ParcelTracking.Application.DTOs;
 using ParcelTracking.Infrastructure.Repositories;
 using ParcelTracking.Infrastructure.Services;
 using Microsoft.OpenApi;
@@ -68,6 +69,9 @@ builder.Services.AddOpenApi("v1", options =>
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<CreateAddressRequestValidator>();
 
+// Problem Details (RFC 7807)
+builder.Services.AddProblemDetails();
+
 // Application Services
 builder.Services.AddScoped<IAddressRepository, AddressRepository>();
 builder.Services.AddScoped<IAddressService, AddressService>();
@@ -77,6 +81,7 @@ builder.Services.AddScoped<IParcelRepository, ParcelRepository>();
 builder.Services.AddSingleton<ITrackingNumberGenerator, TrackingNumberGenerator>();
 builder.Services.AddSingleton<IDeliveryEstimator, DeliveryEstimator>();
 builder.Services.AddScoped<IParcelRegistrationService, ParcelRegistrationService>();
+builder.Services.AddScoped<IParcelRetrievalService, ParcelRetrievalService>();
 
 // Controllers
 builder.Services.AddControllers();
@@ -94,6 +99,7 @@ if (args.Contains("--seed"))
 }
 
 // Configure the HTTP request pipeline.
+app.UseStatusCodePages();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
