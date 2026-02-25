@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using ParcelTracking.Infrastructure.Data;
 using ParcelTracking.Application.Services;
 using ParcelTracking.Infrastructure.Repositories;
+using ParcelTracking.Infrastructure.Services;
 using Microsoft.OpenApi;
 using Microsoft.AspNetCore.Authentication;
 using ParcelTracking.Api.Authentication;
@@ -70,6 +71,12 @@ builder.Services.AddValidatorsFromAssemblyContaining<CreateAddressRequestValidat
 // Application Services
 builder.Services.AddScoped<IAddressRepository, AddressRepository>();
 builder.Services.AddScoped<IAddressService, AddressService>();
+
+// Parcel Registration
+builder.Services.AddScoped<IParcelRepository, ParcelRepository>();
+builder.Services.AddSingleton<ITrackingNumberGenerator, TrackingNumberGenerator>();
+builder.Services.AddSingleton<IDeliveryEstimator, DeliveryEstimator>();
+builder.Services.AddScoped<IParcelRegistrationService, ParcelRegistrationService>();
 
 // Controllers
 builder.Services.AddControllers();
