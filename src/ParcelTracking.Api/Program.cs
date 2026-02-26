@@ -83,6 +83,9 @@ builder.Services.AddSingleton<IDeliveryEstimator, DeliveryEstimator>();
 builder.Services.AddScoped<IParcelRegistrationService, ParcelRegistrationService>();
 builder.Services.AddScoped<IParcelRetrievalService, ParcelRetrievalService>();
 
+// Tracking Events
+builder.Services.AddScoped<ITrackingService, TrackingService>();
+
 // Controllers
 builder.Services.AddControllers();
 
