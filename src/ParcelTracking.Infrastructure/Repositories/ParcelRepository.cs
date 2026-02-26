@@ -38,4 +38,37 @@ public sealed class ParcelRepository : IParcelRepository
         => _db.Parcels
             .Include(p => p.RecipientAddress)
             .FirstOrDefaultAsync(p => p.TrackingNumber == trackingNumber, ct);
+
+    public Task<bool> ParcelExistsAsync(int parcelId, CancellationToken ct)
+        => _db.Parcels.AnyAsync(p => p.Id == parcelId, ct);
+
+    public Task<TrackingEvent?> GetLatestTrackingEventAsync(int parcelId, CancellationToken ct)
+        => _db.TrackingEvents
+            .Where(e => e.ParcelId == parcelId)
+            .OrderByDescending(e => e.Timestamp)
+            .FirstOrDefaultAsync(ct);
+
+    public Task<Parcel?> GetByIdAsync(int parcelId, CancellationToken ct)
+        => _db.Parcels.FirstOrDefaultAsync(p => p.Id == parcelId, ct);
+
+    public async Task<List<TrackingEvent>> GetTrackingEventsAsync(
+        int parcelId, 
+        DateTimeOffset? from, 
+        DateTimeOffset? to, 
+        CancellationToken ct)
+    {
+        var query = _db.TrackingEvents.Where(e => e.ParcelId == parcelId);
+
+        if (from.HasValue)
+        {
+            query = query.Where(e => e.Timestamp >= from.Value);
+        }
+
+        if (to.HasValue)
+        {
+            query = query.Where(e => e.Timestamp <= to.Value);
+        }
+
+        return await query.OrderBy(e => e.Timestamp).ToListAsync(ct);
+    }
 }
