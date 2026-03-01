@@ -12,6 +12,7 @@ using FluentValidation;
 using FluentValidation.AspNetCore;
 using ParcelTracking.Application.Interfaces;
 using ParcelTracking.Application.Validators;
+using ParcelTracking.Api.ExceptionHandlers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -63,6 +64,18 @@ builder.Services.AddOpenApi("v1", options =>
 
         return Task.CompletedTask;
     });
+
+    // Include XML comments for Swagger documentation
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        options.AddSchemaTransformer((schema, context, ct) =>
+        {
+            // XML comments are automatically included by the OpenAPI generator
+            return Task.CompletedTask;
+        });
+    }
 });
 
 // FluentValidation
@@ -71,6 +84,9 @@ builder.Services.AddValidatorsFromAssemblyContaining<CreateAddressRequestValidat
 
 // Problem Details (RFC 7807)
 builder.Services.AddProblemDetails();
+
+// Exception Handlers
+builder.Services.AddExceptionHandler<TerminalStateExceptionHandler>();
 
 // Application Services
 builder.Services.AddScoped<IAddressRepository, AddressRepository>();
@@ -86,8 +102,13 @@ builder.Services.AddScoped<IParcelRetrievalService, ParcelRetrievalService>();
 // Tracking Events
 builder.Services.AddScoped<ITrackingService, TrackingService>();
 
+// Parcel Status Lifecycle
+builder.Services.AddScoped<IParcelStatusService, ParcelStatusService>();
+builder.Services.AddScoped<IParcelService, ParcelService>();
+
 // Controllers
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddNewtonsoftJson();
 
 var app = builder.Build();
 
@@ -102,6 +123,7 @@ if (args.Contains("--seed"))
 }
 
 // Configure the HTTP request pipeline.
+app.UseExceptionHandler();
 app.UseStatusCodePages();
 if (app.Environment.IsDevelopment())
 {
