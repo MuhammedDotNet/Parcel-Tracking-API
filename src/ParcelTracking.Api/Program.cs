@@ -88,6 +88,9 @@ builder.Services.AddProblemDetails();
 // Exception Handlers
 builder.Services.AddExceptionHandler<TerminalStateExceptionHandler>();
 
+// Response Caching
+builder.Services.AddResponseCaching();
+
 // Application Services
 builder.Services.AddScoped<IAddressRepository, AddressRepository>();
 builder.Services.AddScoped<IAddressService, AddressService>();
@@ -123,14 +126,15 @@ if (args.Contains("--seed"))
 }
 
 // Configure the HTTP request pipeline.
-app.UseExceptionHandler();
-app.UseStatusCodePages();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
 }
 
+app.UseResponseCaching();
+app.UseExceptionHandler();
+app.UseStatusCodePages();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
