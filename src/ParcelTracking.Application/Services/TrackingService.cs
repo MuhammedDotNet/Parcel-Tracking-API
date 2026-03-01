@@ -2,6 +2,8 @@ using ParcelTracking.Application.DTOs;
 using ParcelTracking.Application.Interfaces;
 using ParcelTracking.Domain.Entities;
 using ParcelTracking.Domain.Enums;
+using ParcelTracking.Domain.Exceptions;
+using ParcelTracking.Domain.Rules;
 
 namespace ParcelTracking.Application.Services;
 
@@ -19,11 +21,17 @@ public class TrackingService : ITrackingService
         CreateTrackingEventRequest request, 
         CancellationToken ct)
     {
-        // Check if parcel exists
-        var parcelExists = await _repository.ParcelExistsAsync(parcelId, ct);
-        if (!parcelExists)
+        // Check if parcel exists and get it
+        var parcel = await _repository.GetByIdAsync(parcelId, ct);
+        if (parcel is null)
         {
             throw new KeyNotFoundException($"Parcel {parcelId} not found.");
+        }
+
+        // Check if parcel is in terminal state - Requirement 4.4
+        if (ParcelStatusRules.IsTerminal(parcel.Status))
+        {
+            throw new ParcelInTerminalStateException(parcel.Id, parcel.Status);
         }
 
         // Query for the most recent event for the parcel
@@ -56,11 +64,7 @@ public class TrackingService : ITrackingService
         var newStatus = MapEventTypeToStatus(request.EventType);
 
         // Update parcel status
-        var parcel = await _repository.GetByIdAsync(parcelId, ct);
-        if (parcel != null)
-        {
-            parcel.Status = newStatus;
-        }
+        parcel.Status = newStatus;
 
         // Save changes atomically
         await _repository.SaveChangesAsync(ct);
