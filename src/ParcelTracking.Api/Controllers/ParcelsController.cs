@@ -58,6 +58,40 @@ public class ParcelsController : ControllerBase
         }
     }
 
+    /// <summary>Search and filter parcels with cursor-based pagination.</summary>
+    [HttpGet]
+    [ResponseCache(Duration = 30, VaryByQueryKeys = ["*"])]
+    [ProducesResponseType(typeof(PagedResult<ParcelSearchResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Search(
+        [FromQuery] ParcelSearchParams searchParams,
+        CancellationToken ct)
+    {
+        // Validate date range
+        var dateValidation = ParcelSearchParams.ValidateDateRange(
+            searchParams.CreatedFrom,
+            searchParams.CreatedTo);
+
+        if (!dateValidation.IsValid)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "One or more validation errors occurred.",
+                Detail = dateValidation.ErrorMessage,
+                Status = StatusCodes.Status400BadRequest,
+                Instance = HttpContext.Request.Path
+            });
+        }
+
+        // Clamp page size to valid range
+        searchParams.PageSize = ParcelSearchParams.ClampPageSize(searchParams.PageSize);
+
+        // Execute search
+        var result = await _parcelService.SearchParcelsAsync(searchParams, ct);
+
+        return Ok(result);
+    }
+
     /// <summary>Get full parcel details by internal ID (internal use).</summary>
     [HttpGet("{id:int}")]
     [ProducesResponseType(typeof(ParcelDetailResponse), StatusCodes.Status200OK)]
