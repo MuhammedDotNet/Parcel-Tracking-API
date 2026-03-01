@@ -71,4 +71,15 @@ public sealed class ParcelRepository : IParcelRepository
 
         return await query.OrderBy(e => e.Timestamp).ToListAsync(ct);
     }
+
+    public IQueryable<Parcel> GetQueryableWithAddresses()
+        => _db.Parcels
+            .Include(p => p.ShipperAddress)
+            .Include(p => p.RecipientAddress);
+
+    public Task<int> CountAsync(IQueryable<Parcel> query, CancellationToken ct)
+        => query.CountAsync(ct);
+
+    public Task<List<Parcel>> ToListAsync(IQueryable<Parcel> query, CancellationToken ct)
+        => query.ToListAsync(ct);
 }

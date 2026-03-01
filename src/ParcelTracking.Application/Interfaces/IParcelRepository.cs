@@ -14,4 +14,7 @@ public interface IParcelRepository
     Task<TrackingEvent?> GetLatestTrackingEventAsync(int parcelId, CancellationToken ct);
     Task<Parcel?> GetByIdAsync(int parcelId, CancellationToken ct);
     Task<List<TrackingEvent>> GetTrackingEventsAsync(int parcelId, DateTimeOffset? from, DateTimeOffset? to, CancellationToken ct);
+    IQueryable<Parcel> GetQueryableWithAddresses();
+    Task<int> CountAsync(IQueryable<Parcel> query, CancellationToken ct);
+    Task<List<Parcel>> ToListAsync(IQueryable<Parcel> query, CancellationToken ct);
 }
