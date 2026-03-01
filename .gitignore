@@ -63,5 +63,5 @@ appsettings.Local.json
 .env
 docker-compose.override.yml
 
-#Nchunch
+#NCrunch
 *.NCrunch
