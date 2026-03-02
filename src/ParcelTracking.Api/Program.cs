@@ -109,6 +109,13 @@ builder.Services.AddScoped<ITrackingService, TrackingService>();
 builder.Services.AddScoped<IParcelStatusService, ParcelStatusService>();
 builder.Services.AddScoped<IParcelService, ParcelService>();
 
+// Delivery Confirmation
+builder.Services.AddScoped<IDeliveryConfirmationRepository, DeliveryConfirmationRepository>();
+builder.Services.AddScoped<IDeliveryConfirmationService, DeliveryConfirmationService>();
+
+// Exception Handling & Retry
+builder.Services.AddScoped<IExceptionService, ExceptionService>();
+
 // Controllers
 builder.Services.AddControllers()
     .AddNewtonsoftJson();

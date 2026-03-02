@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using ParcelTracking.Application.DTOs;
 using ParcelTracking.Application.Interfaces;
+using ParcelTracking.Domain.Enums;
 
 namespace ParcelTracking.Api.Controllers;
 
@@ -15,17 +16,20 @@ public class ParcelsController : ControllerBase
     private readonly IParcelRetrievalService _retrievalService;
     private readonly IParcelStatusService _statusService;
     private readonly IParcelService _parcelService;
+    private readonly IExceptionService _exceptionService;
 
     public ParcelsController(
         IParcelRegistrationService registrationService,
         IParcelRetrievalService retrievalService,
         IParcelStatusService statusService,
-        IParcelService parcelService)
+        IParcelService parcelService,
+        IExceptionService exceptionService)
     {
         _registrationService = registrationService;
         _retrievalService = retrievalService;
         _statusService = statusService;
         _parcelService = parcelService;
+        _exceptionService = exceptionService;
     }
 
     /// <summary>Register a new parcel and generate a tracking number.</summary>
@@ -90,6 +94,16 @@ public class ParcelsController : ControllerBase
         var result = await _parcelService.SearchParcelsAsync(searchParams, ct);
 
         return Ok(result);
+    }
+
+    /// <summary>Get all parcels currently in Exception status, ordered by oldest first.</summary>
+    [HttpGet("exceptions")]
+    [ProducesResponseType(typeof(List<ParcelDetailResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetExceptionParcels(CancellationToken ct)
+    {
+        var parcels = await _exceptionService.GetExceptionParcelsAsync(ct);
+        var response = parcels.Select(MapToParcelWithAddresses).ToList();
+        return Ok(response);
     }
 
     /// <summary>Get full parcel details by internal ID (internal use).</summary>
@@ -315,5 +329,146 @@ public class ParcelsController : ControllerBase
         }).ToList(),
         EstimatedDeliveryDate = p.EstimatedDeliveryDate,
         CreatedAt = p.CreatedAt
+    };
+
+    /// <summary>Report a delivery exception for a parcel.</summary>
+    [HttpPost("{id:int}/exception")]
+    [ProducesResponseType(typeof(ParcelResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ReportException(
+        int id,
+        [FromBody] ReportExceptionRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            var parcel = await _exceptionService.ReportExceptionAsync(id, request, ct);
+            return Ok(MapToResponse(parcel));
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = "Parcel Not Found",
+                Detail = "Parcel not found",
+                Status = StatusCodes.Status404NotFound,
+                Instance = HttpContext.Request.Path
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Invalid Operation",
+                Detail = ex.Message,
+                Status = StatusCodes.Status400BadRequest,
+                Instance = HttpContext.Request.Path
+            });
+        }
+    }
+
+    /// <summary>Schedule a redelivery attempt for a parcel in Exception status.</summary>
+    [HttpPost("{id:int}/retry")]
+    [ProducesResponseType(typeof(ParcelResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RetryDelivery(
+        int id,
+        [FromBody] RetryDeliveryRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            var (parcel, autoReturned) = await _exceptionService.RetryDeliveryAsync(id, request, ct);
+
+            if (autoReturned)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Maximum Attempts Reached",
+                    Detail = "Maximum delivery attempts (3) reached. Parcel has been returned to sender.",
+                    Status = StatusCodes.Status400BadRequest,
+                    Instance = HttpContext.Request.Path,
+                    Extensions = { ["parcel"] = MapToResponse(parcel) }
+                });
+            }
+
+            return Ok(MapToResponse(parcel));
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = "Parcel Not Found",
+                Detail = "Parcel not found",
+                Status = StatusCodes.Status404NotFound,
+                Instance = HttpContext.Request.Path
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Invalid Operation",
+                Detail = ex.Message,
+                Status = StatusCodes.Status400BadRequest,
+                Instance = HttpContext.Request.Path
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Validation Error",
+                Detail = ex.Message,
+                Status = StatusCodes.Status400BadRequest,
+                Instance = HttpContext.Request.Path
+            });
+        }
+    }
+
+    private static ParcelDetailResponse MapToParcelWithAddresses(Domain.Entities.Parcel p) => new()
+    {
+        Id = p.Id,
+        TrackingNumber = p.TrackingNumber,
+        Status = p.Status.ToString(),
+        Weight = p.Weight,
+        WeightUnit = p.WeightUnit.ToString(),
+        Description = p.Description ?? string.Empty,
+        ShipperAddress = p.ShipperAddress != null ? new AddressResponse
+        {
+            Id = p.ShipperAddress.Id,
+            Street1 = p.ShipperAddress.Street1,
+            Street2 = p.ShipperAddress.Street2,
+            City = p.ShipperAddress.City,
+            State = p.ShipperAddress.State,
+            PostalCode = p.ShipperAddress.PostalCode,
+            CountryCode = p.ShipperAddress.CountryCode,
+            IsResidential = p.ShipperAddress.IsResidential,
+            ContactName = p.ShipperAddress.ContactName,
+            CompanyName = p.ShipperAddress.CompanyName,
+            Phone = p.ShipperAddress.Phone,
+            Email = p.ShipperAddress.Email
+        } : null!,
+        RecipientAddress = p.RecipientAddress != null ? new AddressResponse
+        {
+            Id = p.RecipientAddress.Id,
+            Street1 = p.RecipientAddress.Street1,
+            Street2 = p.RecipientAddress.Street2,
+            City = p.RecipientAddress.City,
+            State = p.RecipientAddress.State,
+            PostalCode = p.RecipientAddress.PostalCode,
+            CountryCode = p.RecipientAddress.CountryCode,
+            IsResidential = p.RecipientAddress.IsResidential,
+            ContactName = p.RecipientAddress.ContactName,
+            CompanyName = p.RecipientAddress.CompanyName,
+            Phone = p.RecipientAddress.Phone,
+            Email = p.RecipientAddress.Email
+        } : null!,
+        CreatedAt = p.CreatedAt,
+        DeliveredAt = p.ActualDeliveryDate,
+        DaysInTransit = (int)(DateTimeOffset.UtcNow - p.CreatedAt).TotalDays,
+        IsDelivered = p.Status == ParcelStatus.Delivered
     };
 }
