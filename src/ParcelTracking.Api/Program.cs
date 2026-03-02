@@ -13,6 +13,13 @@ using FluentValidation.AspNetCore;
 using ParcelTracking.Application.Interfaces;
 using ParcelTracking.Application.Validators;
 using ParcelTracking.Api.ExceptionHandlers;
+using Asp.Versioning;
+using ParcelTracking.Infrastructure.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using System.Text.Json;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using System.Threading.RateLimiting;
+using ParcelTracking.Api.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,6 +35,40 @@ builder.Services.AddAuthentication("ApiKey")
 
 builder.Services.AddAuthorization();
 
+// CORS
+builder.Services.AddCors(options =>
+{
+    if (builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing"))
+    {
+        options.AddPolicy("Frontend", policy =>
+            policy.AllowAnyOrigin()
+                  .AllowAnyMethod()
+                  .AllowAnyHeader());
+    }
+    else
+    {
+        options.AddPolicy("Frontend", policy =>
+            policy.WithOrigins("https://tracking.example.com")
+                  .WithMethods("GET", "POST", "PUT", "DELETE", "PATCH")
+                  .WithHeaders("Content-Type", "Authorization", "X-Api-Key")
+                  .WithExposedHeaders("X-Pagination", "X-Request-Id", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
+    }
+});
+
+// API Versioning
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new ApiVersion(1, 0);
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ReportApiVersions = true;
+    options.ApiVersionReader = new UrlSegmentApiVersionReader();
+})
+.AddApiExplorer(options =>
+{
+    options.GroupNameFormat = "'v'VVV";
+    options.SubstituteApiVersionInUrl = true;
+});
+
 // OpenAPI
 builder.Services.AddOpenApi("v1", options =>
 {
@@ -37,7 +78,12 @@ builder.Services.AddOpenApi("v1", options =>
         {
             Title = "Parcel Tracking API",
             Version = "v1",
-            Description = "A carrier-style parcel tracking REST API"
+            Description = "Production-grade REST API for parcel registration, tracking, and delivery management",
+            Contact = new OpenApiContact
+            {
+                Name = "API Support",
+                Email = "eloqmens@gmail.com"
+            }
         };
         return Task.CompletedTask;
     });
@@ -122,6 +168,42 @@ builder.Services.AddScoped<IDeliveryEstimationService, DeliveryEstimationService
 // Analytics
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 
+// Health Checks
+builder.Services.AddHealthChecks()
+    .AddCheck<DatabaseHealthCheck>("database", tags: new[] { "ready" });
+
+// Rate Limiting
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.AddPolicy("PerClient", context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 100,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 0
+                }));
+
+        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+        options.OnRejected = async (context, ct) =>
+        {
+            context.HttpContext.Response.ContentType = "application/json";
+            await context.HttpContext.Response.WriteAsJsonAsync(new
+            {
+                title = "Too Many Requests",
+                status = 429,
+                detail = "Rate limit exceeded. Please try again later.",
+                retryAfter = 60
+            }, ct);
+        };
+    });
+}
+
 // Controllers
 builder.Services.AddControllers(options =>
 {
@@ -161,17 +243,60 @@ if (args.Contains("--seed"))
 }
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
 }
 
+// Request logging middleware - runs first to capture all requests
+app.UseMiddleware<RequestLoggingMiddleware>();
+
 app.UseResponseCaching();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
+app.UseCors("Frontend");
+if (!app.Environment.IsEnvironment("Testing"))
+    app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapControllers();
+var controllers = app.MapControllers();
+if (!app.Environment.IsEnvironment("Testing"))
+    controllers.RequireRateLimiting("PerClient");
+
+// Health Check Endpoints
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = _ => false // No checks, just confirms process is running
+});
+
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready"),
+    ResponseWriter = WriteHealthCheckResponse
+}).DisableRateLimiting();
 
 app.Run();
+
+static async Task WriteHealthCheckResponse(HttpContext context, HealthReport report)
+{
+    context.Response.ContentType = "application/json";
+
+    var response = new
+    {
+        status = report.Status.ToString(),
+        checks = report.Entries.Select(entry => new
+        {
+            name = entry.Key,
+            status = entry.Value.Status.ToString(),
+            description = entry.Value.Description ?? string.Empty,
+            durationMs = entry.Value.Duration.TotalMilliseconds
+        }),
+        totalDurationMs = report.TotalDuration.TotalMilliseconds
+    };
+
+    await context.Response.WriteAsJsonAsync(response, new JsonSerializerOptions
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    });
+}
