@@ -1,0 +1,611 @@
+###############################################################################
+# Parcel Tracking API - HTTP Collection for Manual Testing
+# 
+# This collection demonstrates all API endpoints with versioning, health checks,
+# rate limiting, and CORS preflight requests.
+#
+# Prerequisites:
+# - API running on http://localhost:5000
+# - Database seeded with test data
+# - API Key: dev-api-key-12345 (from appsettings.Development.json)
+###############################################################################
+
+@baseUrl = http://localhost:5000
+@apiKey = dev-api-key-12345
+@apiVersion = v1
+
+###############################################################################
+# HEALTH CHECKS
+###############################################################################
+
+### Health Check - Liveness (process running)
+GET {{baseUrl}}/health/live
+Accept: application/json
+
+### Health Check - Readiness (database connectivity)
+GET {{baseUrl}}/health/ready
+Accept: application/json
+
+###############################################################################
+# OPENAPI DOCUMENTATION
+###############################################################################
+
+### Get OpenAPI Document (v1)
+GET {{baseUrl}}/openapi/v1.json
+Accept: application/json
+
+### Access Scalar UI (Development only - open in browser)
+# GET {{baseUrl}}/scalar/v1
+
+###############################################################################
+# ADDRESSES ENDPOINTS
+###############################################################################
+
+### Get All Addresses
+GET {{baseUrl}}/api/{{apiVersion}}/addresses
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+### Get Address by ID
+GET {{baseUrl}}/api/{{apiVersion}}/addresses/1
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+### Create New Address
+POST {{baseUrl}}/api/{{apiVersion}}/addresses
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "street1": "123 Main Street",
+  "street2": "Suite 100",
+  "city": "San Francisco",
+  "state": "CA",
+  "postalCode": "94102",
+  "countryCode": "US",
+  "isResidential": false,
+  "contactName": "John Doe",
+  "companyName": "Acme Corp",
+  "phone": "+1-555-0100",
+  "email": "john.doe@example.com"
+}
+
+### Update Address
+PUT {{baseUrl}}/api/{{apiVersion}}/addresses/1
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "street1": "456 Updated Street",
+  "street2": "Floor 2",
+  "city": "San Francisco",
+  "state": "CA",
+  "postalCode": "94103",
+  "countryCode": "US",
+  "isResidential": true,
+  "contactName": "Jane Smith",
+  "companyName": null,
+  "phone": "+1-555-0200",
+  "email": "jane.smith@example.com"
+}
+
+### Delete Address
+DELETE {{baseUrl}}/api/{{apiVersion}}/addresses/999
+X-Api-Key: {{apiKey}}
+
+###############################################################################
+# PARCELS ENDPOINTS
+###############################################################################
+
+### Register New Parcel
+POST {{baseUrl}}/api/{{apiVersion}}/parcels
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "shipperAddressId": 1,
+  "recipientAddressId": 2,
+  "serviceType": "Standard",
+  "description": "Electronics shipment",
+  "weight": 2.5,
+  "weightUnit": "Kilograms",
+  "length": 30.0,
+  "width": 20.0,
+  "height": 15.0,
+  "dimensionUnit": "Centimeters",
+  "declaredValue": 500.00,
+  "currency": "USD",
+  "contentItems": [
+    {
+      "hsCode": "8517.12.00",
+      "description": "Smartphone",
+      "quantity": 1,
+      "unitValue": 500.00,
+      "currency": "USD",
+      "weight": 0.2,
+      "weightUnit": "Kilograms",
+      "countryOfOrigin": "CN"
+    }
+  ]
+}
+
+### Get Parcel by ID
+GET {{baseUrl}}/api/{{apiVersion}}/parcels/1
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+### Search Parcels with Filters
+GET {{baseUrl}}/api/{{apiVersion}}/parcels?status=InTransit&serviceType=Express&pageSize=10
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+### Search Parcels with Date Range
+GET {{baseUrl}}/api/{{apiVersion}}/parcels?createdFrom=2026-01-01T00:00:00Z&createdTo=2026-12-31T23:59:59Z&pageSize=20
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+### Search Parcels with Cursor Pagination
+GET {{baseUrl}}/api/{{apiVersion}}/parcels?cursor=eyJpZCI6MTAsImNyZWF0ZWRBdCI6IjIwMjYtMDItMjBUMTI6MDA6MDBaIn0&pageSize=10
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+### Get Exception Parcels
+GET {{baseUrl}}/api/{{apiVersion}}/parcels/exceptions
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+### Patch Parcel - Update Description
+PATCH {{baseUrl}}/api/{{apiVersion}}/parcels/1
+X-Api-Key: {{apiKey}}
+Content-Type: application/json-patch+json
+
+[
+  { "op": "replace", "path": "/description", "value": "Updated parcel description" }
+]
+
+### Patch Parcel - Update Service Type
+PATCH {{baseUrl}}/api/{{apiVersion}}/parcels/1
+X-Api-Key: {{apiKey}}
+Content-Type: application/json-patch+json
+
+[
+  { "op": "replace", "path": "/serviceType", "value": "Express" }
+]
+
+### Patch Parcel - Transition Status
+PATCH {{baseUrl}}/api/{{apiVersion}}/parcels/1
+X-Api-Key: {{apiKey}}
+Content-Type: application/json-patch+json
+
+[
+  { "op": "replace", "path": "/status", "value": "PickedUp" }
+]
+
+### Report Exception
+POST {{baseUrl}}/api/{{apiVersion}}/parcels/1/exception
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "reason": "AddressIssue",
+  "notes": "Recipient address incomplete"
+}
+
+### Retry Delivery
+POST {{baseUrl}}/api/{{apiVersion}}/parcels/1/retry
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "scheduledDate": "2026-03-05T10:00:00Z",
+  "notes": "Address corrected, retry delivery"
+}
+
+###############################################################################
+# TRACKING ENDPOINTS (Public - No Auth Required)
+###############################################################################
+
+### Get Tracking Information by Tracking Number
+GET {{baseUrl}}/api/{{apiVersion}}/tracking/PKG-ABC123
+Accept: application/json
+
+###############################################################################
+# TRACKING EVENTS ENDPOINTS
+###############################################################################
+
+### Create Tracking Event
+POST {{baseUrl}}/api/{{apiVersion}}/parcels/1/events
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "eventType": "InTransit",
+  "location": "Distribution Center - Chicago",
+  "notes": "Package sorted and loaded for transport"
+}
+
+### Get Tracking Event History
+GET {{baseUrl}}/api/{{apiVersion}}/parcels/1/events
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+### Get Tracking Event History with Date Range
+GET {{baseUrl}}/api/{{apiVersion}}/parcels/1/events?from=2026-02-01T00:00:00Z&to=2026-02-28T23:59:59Z
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+###############################################################################
+# DELIVERY CONFIRMATION ENDPOINTS
+###############################################################################
+
+### Confirm Delivery
+POST {{baseUrl}}/api/{{apiVersion}}/parcels/PKG-ABC123/delivery-confirmation
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "receivedBy": "John Doe",
+  "deliveryLocation": "Front Door",
+  "signatureImageUrl": "https://example.com/signatures/abc123.png",
+  "notes": "Package left at front door as requested"
+}
+
+### Get Delivery Confirmation
+GET {{baseUrl}}/api/{{apiVersion}}/parcels/PKG-ABC123/delivery-confirmation
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+###############################################################################
+# DELIVERY ESTIMATION ENDPOINTS
+###############################################################################
+
+### Get Delivery Estimate
+GET {{baseUrl}}/api/{{apiVersion}}/parcels/1/delivery-estimate
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+### Recalculate Delivery Estimate
+PUT {{baseUrl}}/api/{{apiVersion}}/parcels/1/delivery-estimate/recalculate
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+###############################################################################
+# ANALYTICS ENDPOINTS
+###############################################################################
+
+### Get Delivery Statistics
+GET {{baseUrl}}/api/{{apiVersion}}/analytics/delivery-stats
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+### Get Delivery Statistics with Date Range
+GET {{baseUrl}}/api/{{apiVersion}}/analytics/delivery-stats?from=2026-01-01T00:00:00Z&to=2026-03-01T23:59:59Z
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+### Get Exception Reasons
+GET {{baseUrl}}/api/{{apiVersion}}/analytics/exception-reasons
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+### Get Service Breakdown
+GET {{baseUrl}}/api/{{apiVersion}}/analytics/service-breakdown
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+### Get Pipeline Status
+GET {{baseUrl}}/api/{{apiVersion}}/analytics/pipeline
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+###############################################################################
+# API VERSIONING TESTS
+###############################################################################
+
+### Test Version in URL (v1)
+GET {{baseUrl}}/api/v1/addresses
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+### Test Default Version (no version specified - should default to v1)
+GET {{baseUrl}}/api/addresses
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+### Test Version Headers in Response
+GET {{baseUrl}}/api/v1/parcels
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+###############################################################################
+# CORS PREFLIGHT TESTS
+###############################################################################
+
+### CORS Preflight - OPTIONS Request
+OPTIONS {{baseUrl}}/api/v1/parcels
+Origin: https://tracking.example.com
+Access-Control-Request-Method: POST
+Access-Control-Request-Headers: Content-Type, X-Api-Key
+
+### CORS Preflight - Analytics Endpoint
+OPTIONS {{baseUrl}}/api/v1/analytics/delivery-stats
+Origin: https://tracking.example.com
+Access-Control-Request-Method: GET
+Access-Control-Request-Headers: X-Api-Key
+
+### CORS Actual Request (after preflight)
+GET {{baseUrl}}/api/v1/addresses
+Origin: https://tracking.example.com
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+###############################################################################
+# RATE LIMITING TESTS
+###############################################################################
+
+### Single Request (should succeed)
+GET {{baseUrl}}/api/v1/addresses
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+### Rate Limit Test - 101 Requests
+# Note: This is a manual test. Run this request 101 times rapidly.
+# The first 100 should succeed (200 OK), the 101st should return 429 Too Many Requests.
+# 
+# To test programmatically, use a script like:
+# for i in {1..101}; do curl -H "X-Api-Key: dev-api-key-12345" http://localhost:5000/api/v1/addresses; done
+#
+# Expected behavior:
+# - Requests 1-100: HTTP 200 OK with X-RateLimit-Remaining header decreasing
+# - Request 101: HTTP 429 Too Many Requests with retry guidance
+
+GET {{baseUrl}}/api/v1/addresses
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+### Verify Rate Limit Headers
+# Check response headers for:
+# - X-RateLimit-Limit: 100
+# - X-RateLimit-Remaining: (decreases with each request)
+# - X-RateLimit-Reset: (timestamp when limit resets)
+
+GET {{baseUrl}}/api/v1/parcels
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+### Health Check Should NOT Be Rate Limited
+# This should always succeed even after hitting rate limit
+GET {{baseUrl}}/health/ready
+Accept: application/json
+
+###############################################################################
+# REQUEST LOGGING TESTS
+###############################################################################
+
+### Test Correlation ID in Response
+# Check response headers for X-Request-Id
+GET {{baseUrl}}/api/v1/addresses
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+### Test Multiple Requests Have Different Correlation IDs
+GET {{baseUrl}}/api/v1/parcels
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+###############################################################################
+# ERROR HANDLING TESTS
+###############################################################################
+
+### Test 404 - Parcel Not Found
+GET {{baseUrl}}/api/v1/parcels/999999
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+### Test 400 - Invalid Date Range
+GET {{baseUrl}}/api/v1/parcels?createdFrom=2026-12-31T00:00:00Z&createdTo=2026-01-01T00:00:00Z
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+### Test 401 - Missing API Key
+GET {{baseUrl}}/api/v1/addresses
+Accept: application/json
+
+### Test 401 - Invalid API Key
+GET {{baseUrl}}/api/v1/addresses
+X-Api-Key: invalid-key
+Accept: application/json
+
+### Test 422 - Invalid Status Transition
+PATCH {{baseUrl}}/api/v1/parcels/1
+X-Api-Key: {{apiKey}}
+Content-Type: application/json-patch+json
+
+[
+  { "op": "replace", "path": "/status", "value": "Delivered" }
+]
+
+### Test 422 - Terminal State Modification
+# First, ensure parcel 1 is in Delivered status, then try to modify it
+PATCH {{baseUrl}}/api/v1/parcels/1
+X-Api-Key: {{apiKey}}
+Content-Type: application/json-patch+json
+
+[
+  { "op": "replace", "path": "/description", "value": "Should fail" }
+]
+
+###############################################################################
+# COMPLETE WORKFLOW TEST
+###############################################################################
+
+### 1. Create Shipper Address
+POST {{baseUrl}}/api/v1/addresses
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "street1": "100 Warehouse Blvd",
+  "city": "Los Angeles",
+  "state": "CA",
+  "postalCode": "90001",
+  "countryCode": "US",
+  "isResidential": false,
+  "contactName": "Shipping Manager",
+  "companyName": "Warehouse Inc",
+  "phone": "+1-555-1000",
+  "email": "shipping@warehouse.com"
+}
+
+### 2. Create Recipient Address
+POST {{baseUrl}}/api/v1/addresses
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "street1": "500 Customer Lane",
+  "city": "New York",
+  "state": "NY",
+  "postalCode": "10001",
+  "countryCode": "US",
+  "isResidential": true,
+  "contactName": "Customer Name",
+  "phone": "+1-555-2000",
+  "email": "customer@example.com"
+}
+
+### 3. Register Parcel (use address IDs from steps 1 and 2)
+POST {{baseUrl}}/api/v1/parcels
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "shipperAddressId": 1,
+  "recipientAddressId": 2,
+  "serviceType": "Express",
+  "description": "Important documents",
+  "weight": 0.5,
+  "weightUnit": "Kilograms",
+  "length": 30.0,
+  "width": 20.0,
+  "height": 5.0,
+  "dimensionUnit": "Centimeters",
+  "declaredValue": 100.00,
+  "currency": "USD",
+  "contentItems": [
+    {
+      "hsCode": "4901.99.00",
+      "description": "Business documents",
+      "quantity": 1,
+      "unitValue": 100.00,
+      "currency": "USD",
+      "weight": 0.5,
+      "weightUnit": "Kilograms",
+      "countryOfOrigin": "US"
+    }
+  ]
+}
+
+### 4. Get Delivery Estimate (use parcel ID from step 3)
+GET {{baseUrl}}/api/v1/parcels/1/delivery-estimate
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+### 5. Track Parcel by Tracking Number (use tracking number from step 3)
+GET {{baseUrl}}/api/v1/tracking/PKG-ABC123
+Accept: application/json
+
+### 6. Add Tracking Event - Picked Up
+POST {{baseUrl}}/api/v1/parcels/1/events
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "eventType": "PickedUp",
+  "location": "Los Angeles Distribution Center",
+  "notes": "Package picked up from shipper"
+}
+
+### 7. Transition Status to PickedUp
+PATCH {{baseUrl}}/api/v1/parcels/1
+X-Api-Key: {{apiKey}}
+Content-Type: application/json-patch+json
+
+[
+  { "op": "replace", "path": "/status", "value": "PickedUp" }
+]
+
+### 8. Add Tracking Event - In Transit
+POST {{baseUrl}}/api/v1/parcels/1/events
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "eventType": "InTransit",
+  "location": "Phoenix Hub",
+  "notes": "Package in transit to destination"
+}
+
+### 9. Transition Status to InTransit
+PATCH {{baseUrl}}/api/v1/parcels/1
+X-Api-Key: {{apiKey}}
+Content-Type: application/json-patch+json
+
+[
+  { "op": "replace", "path": "/status", "value": "InTransit" }
+]
+
+### 10. Add Tracking Event - Out For Delivery
+POST {{baseUrl}}/api/v1/parcels/1/events
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "eventType": "OutForDelivery",
+  "location": "New York Local Facility",
+  "notes": "Out for delivery"
+}
+
+### 11. Transition Status to OutForDelivery
+PATCH {{baseUrl}}/api/v1/parcels/1
+X-Api-Key: {{apiKey}}
+Content-Type: application/json-patch+json
+
+[
+  { "op": "replace", "path": "/status", "value": "OutForDelivery" }
+]
+
+### 12. Confirm Delivery
+POST {{baseUrl}}/api/v1/parcels/PKG-ABC123/delivery-confirmation
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "receivedBy": "Customer Name",
+  "deliveryLocation": "Front Door",
+  "notes": "Package delivered successfully"
+}
+
+### 13. Get Delivery Confirmation
+GET {{baseUrl}}/api/v1/parcels/PKG-ABC123/delivery-confirmation
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+### 14. Get Tracking Event History
+GET {{baseUrl}}/api/v1/parcels/1/events
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+### 15. View Analytics - Delivery Stats
+GET {{baseUrl}}/api/v1/analytics/delivery-stats
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+### 16. View Analytics - Pipeline Status
+GET {{baseUrl}}/api/v1/analytics/pipeline
+X-Api-Key: {{apiKey}}
+Accept: application/json
+
+###############################################################################
+# END OF HTTP COLLECTION
+###############################################################################
