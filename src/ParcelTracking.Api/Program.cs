@@ -116,6 +116,9 @@ builder.Services.AddScoped<IDeliveryConfirmationService, DeliveryConfirmationSer
 // Exception Handling & Retry
 builder.Services.AddScoped<IExceptionService, ExceptionService>();
 
+// Delivery Estimation
+builder.Services.AddScoped<IDeliveryEstimationService, DeliveryEstimationService>();
+
 // Controllers
 builder.Services.AddControllers()
     .AddNewtonsoftJson();
