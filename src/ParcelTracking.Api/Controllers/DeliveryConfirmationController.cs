@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ParcelTracking.Application.DTOs;
 using ParcelTracking.Application.Interfaces;
+using Asp.Versioning;
 
 namespace ParcelTracking.Api.Controllers;
 
@@ -11,8 +12,11 @@ namespace ParcelTracking.Api.Controllers;
 /// GET: Retrieve delivery confirmation details for a parcel.
 /// </summary>
 [ApiController]
+[ApiVersion("1.0")]
 [Authorize]
 [Route("api/parcels/{trackingNumber}/delivery-confirmation")]
+[Route("api/v{version:apiVersion}/parcels/{trackingNumber}/delivery-confirmation")]
+[Tags("Delivery Confirmation")]
 public class DeliveryConfirmationController : ControllerBase
 {
     private readonly IDeliveryConfirmationService _service;

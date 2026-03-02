@@ -4,12 +4,16 @@ using Microsoft.AspNetCore.Mvc;
 using ParcelTracking.Application.DTOs;
 using ParcelTracking.Application.Interfaces;
 using ParcelTracking.Domain.Enums;
+using Asp.Versioning;
 
 namespace ParcelTracking.Api.Controllers;
 
 [ApiController]
+[ApiVersion("1.0")]
 [Authorize]
 [Route("api/[controller]")]
+[Route("api/v{version:apiVersion}/[controller]")]
+[Tags("Parcels")]
 public class ParcelsController : ControllerBase
 {
     private readonly IParcelRegistrationService _registrationService;

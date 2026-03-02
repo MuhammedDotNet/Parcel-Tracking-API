@@ -2,12 +2,16 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ParcelTracking.Application.DTOs;
 using ParcelTracking.Application.Interfaces;
+using Asp.Versioning;
 
 namespace ParcelTracking.Api.Controllers;
 
 [ApiController]
+[ApiVersion("1.0")]
 [Authorize]
 [Route("api/parcels/{parcelId}/events")]
+[Route("api/v{version:apiVersion}/parcels/{parcelId}/events")]
+[Tags("Tracking Events")]
 public class TrackingEventsController : ControllerBase
 {
     private readonly ITrackingService _trackingService;

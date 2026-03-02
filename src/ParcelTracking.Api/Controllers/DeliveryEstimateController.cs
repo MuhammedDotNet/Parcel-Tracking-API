@@ -5,6 +5,7 @@ using ParcelTracking.Application.DTOs;
 using ParcelTracking.Application.Interfaces;
 using ParcelTracking.Application.Services;
 using ParcelTracking.Infrastructure.Data;
+using Asp.Versioning;
 
 namespace ParcelTracking.Api.Controllers;
 
@@ -14,8 +15,11 @@ namespace ParcelTracking.Api.Controllers;
 /// PUT: Recalculate a delivery estimate after exceptions or delays.
 /// </summary>
 [ApiController]
+[ApiVersion("1.0")]
 [Authorize]
 [Route("api/parcels/{id:int}/delivery-estimate")]
+[Route("api/v{version:apiVersion}/parcels/{id:int}/delivery-estimate")]
+[Tags("Delivery Estimation")]
 public class DeliveryEstimateController : ControllerBase
 {
     private readonly ParcelTrackingDbContext _context;

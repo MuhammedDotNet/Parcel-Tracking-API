@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ParcelTracking.Application.Interfaces;
+using Asp.Versioning;
 
 namespace ParcelTracking.Api.Controllers;
 
@@ -8,8 +9,11 @@ namespace ParcelTracking.Api.Controllers;
 /// Analytics endpoints for aggregated parcel statistics and insights
 /// </summary>
 [ApiController]
+[ApiVersion("1.0")]
 [Route("api/[controller]")]
+[Route("api/v{version:apiVersion}/[controller]")]
 [Authorize]
+[Tags("Analytics")]
 public class AnalyticsController : ControllerBase
 {
     private readonly IAnalyticsService _analytics;

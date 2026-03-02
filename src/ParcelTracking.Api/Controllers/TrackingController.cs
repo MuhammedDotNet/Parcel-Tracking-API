@@ -2,12 +2,16 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ParcelTracking.Application.DTOs;
 using ParcelTracking.Application.Interfaces;
+using Asp.Versioning;
 
 namespace ParcelTracking.Api.Controllers;
 
 [ApiController]
+[ApiVersion("1.0")]
 [AllowAnonymous]
 [Route("api/[controller]")]
+[Route("api/v{version:apiVersion}/[controller]")]
+[Tags("Tracking")]
 public class TrackingController : ControllerBase
 {
     private readonly IParcelRetrievalService _retrievalService;
