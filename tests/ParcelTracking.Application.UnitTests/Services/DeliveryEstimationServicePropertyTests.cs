@@ -676,4 +676,65 @@ public class DeliveryEstimationServicePropertyTests
 
         return current;
     }
+
+    // Feature: delivery-estimation, Property 11: Recalculation updates database
+    // Validates: Requirements 6.4, 6.5
+    // Note: This is a unit test for the service logic. The actual database update is tested in integration tests.
+    [Property(MaxTest = 100)]
+    public void Property11_RecalculationUpdatesEstimate(
+        NonNegativeInt serviceTypeIndex,
+        NonNegativeInt statusIndex,
+        PositiveInt daysAgoCreated,
+        PositiveInt daysAgoRecalc,
+        bool isInternational)
+    {
+        // Arrange
+        var serviceTypes = Enum.GetValues<ServiceType>();
+        var statuses = Enum.GetValues<ParcelStatus>();
+        
+        var serviceType = serviceTypes[serviceTypeIndex.Get % serviceTypes.Length];
+        var status = statuses[statusIndex.Get % statuses.Length];
+        
+        // Create timestamps - ensure recalculation date is after creation date
+        var createdDaysAgo = (daysAgoCreated.Get % 30) + 10; // 10-40 days ago
+        var recalcDaysAgo = Math.Min(createdDaysAgo - 1, (daysAgoRecalc.Get % 20) + 1); // 1-21 days ago, but after creation
+        
+        var parcelCreatedAt = DateTime.UtcNow.AddDays(-createdDaysAgo);
+        var recalculationDate = DateTime.UtcNow.AddDays(-recalcDaysAgo);
+        
+        var shipperCountry = "US";
+        var recipientCountry = isInternational ? "CA" : "US";
+        
+        var parcel = CreateParcel(
+            serviceType: serviceType,
+            status: status,
+            shipperCountry: shipperCountry,
+            recipientCountry: recipientCountry,
+            createdAt: parcelCreatedAt);
+
+        var service = new DeliveryEstimationService();
+        var fromDate = DateOnly.FromDateTime(recalculationDate);
+
+        // Act
+        var result = service.Recalculate(parcel, fromDate);
+
+        // Assert - Requirement 6.5: The latest delivery date should be returned
+        // This verifies that the service returns the correct value that should be persisted
+        result.LatestDelivery.Should().NotBe(default(DateOnly),
+            "Recalculation should return a valid latest delivery date to be persisted");
+        
+        // Verify that the latest delivery date is after or equal to the earliest delivery date
+        result.LatestDelivery.Should().BeOnOrAfter(result.EarliestDelivery,
+            "Latest delivery date should be on or after earliest delivery date");
+        
+        // Verify that the latest delivery date is after the recalculation date
+        result.LatestDelivery.Should().BeAfter(fromDate,
+            "Latest delivery date should be after the recalculation start date");
+        
+        // Requirement 6.4: Verify the result contains the value that should be stored in EstimatedDeliveryDate
+        // The controller will store result.LatestDelivery in parcel.EstimatedDeliveryDate
+        var expectedStoredDate = result.LatestDelivery;
+        expectedStoredDate.Should().NotBe(default(DateOnly),
+            "The value to be stored in EstimatedDeliveryDate should be valid");
+    }
 }
