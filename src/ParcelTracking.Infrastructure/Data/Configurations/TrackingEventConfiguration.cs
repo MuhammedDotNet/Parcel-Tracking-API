@@ -25,6 +25,10 @@ namespace ParcelTracking.Infrastructure.Data.Configurations
             // Additional indexes for common queries
             builder.HasIndex(te => te.EventType);
 
+            // Composite index for analytics queries
+            builder.HasIndex(te => new { te.EventType, te.Timestamp })
+                .HasDatabaseName("IX_TrackingEvents_EventType_Timestamp");
+
             // Column constraints - Required fields
             builder.Property(te => te.Timestamp)
                 .IsRequired();

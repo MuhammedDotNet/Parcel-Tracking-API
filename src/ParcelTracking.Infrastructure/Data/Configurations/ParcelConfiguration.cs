@@ -66,6 +66,10 @@ public class ParcelConfiguration : IEntityTypeConfiguration<Parcel>
         builder.HasIndex(p => new { p.Status, p.Id })
             .HasDatabaseName("IX_Parcels_Status_Id");
 
+        // Composite index for analytics queries
+        builder.HasIndex(p => new { p.CreatedAt, p.Status })
+            .HasDatabaseName("IX_Parcels_CreatedAt_Status");
+
         // Decimal precision
         builder.Property(p => p.Weight)
             .HasPrecision(10, 2);
