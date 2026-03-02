@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using ParcelTracking.Application.Interfaces;
 using ParcelTracking.Domain.Entities;
+using ParcelTracking.Domain.Enums;
 using ParcelTracking.Infrastructure.Data;
 
 namespace ParcelTracking.Infrastructure.Repositories;
@@ -52,9 +53,9 @@ public sealed class ParcelRepository : IParcelRepository
         => _db.Parcels.FirstOrDefaultAsync(p => p.Id == parcelId, ct);
 
     public async Task<List<TrackingEvent>> GetTrackingEventsAsync(
-        int parcelId, 
-        DateTimeOffset? from, 
-        DateTimeOffset? to, 
+        int parcelId,
+        DateTimeOffset? from,
+        DateTimeOffset? to,
         CancellationToken ct)
     {
         var query = _db.TrackingEvents.Where(e => e.ParcelId == parcelId);
@@ -82,4 +83,18 @@ public sealed class ParcelRepository : IParcelRepository
 
     public Task<List<Parcel>> ToListAsync(IQueryable<Parcel> query, CancellationToken ct)
         => query.ToListAsync(ct);
+
+    public Task<Parcel?> GetByIdWithRecipientAsync(int id, CancellationToken ct)
+        => _db.Parcels
+            .Include(p => p.RecipientAddress)
+            .FirstOrDefaultAsync(p => p.Id == id, ct);
+
+    public Task<List<Parcel>> GetExceptionParcelsAsync(CancellationToken ct)
+        => _db.Parcels
+            .Include(p => p.ShipperAddress)
+            .Include(p => p.RecipientAddress)
+            .Where(p => p.Status == ParcelStatus.Exception)
+            .OrderBy(p => p.UpdatedAt)
+            .ToListAsync(ct);
 }
+
