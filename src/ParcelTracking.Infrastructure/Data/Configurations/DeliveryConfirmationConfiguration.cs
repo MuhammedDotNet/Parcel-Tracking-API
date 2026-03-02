@@ -16,6 +16,18 @@ namespace ParcelTracking.Infrastructure.Data.Configurations
             // Ensure one confirmation per parcel at the database level
             builder.HasIndex(dc => dc.ParcelId)
                 .IsUnique();
+
+            builder.Property(dc => dc.ReceivedBy)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            builder.Property(dc => dc.DeliveryLocation)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            builder.Property(dc => dc.CreatedAt)
+                .IsRequired()
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
         }
     }
 }
