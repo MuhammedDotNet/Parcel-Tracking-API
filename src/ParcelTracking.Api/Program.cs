@@ -119,8 +119,33 @@ builder.Services.AddScoped<IExceptionService, ExceptionService>();
 // Delivery Estimation
 builder.Services.AddScoped<IDeliveryEstimationService, DeliveryEstimationService>();
 
+// Analytics
+builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
+
 // Controllers
-builder.Services.AddControllers()
+builder.Services.AddControllers(options =>
+{
+    // Cache profiles for analytics endpoints
+    options.CacheProfiles.Add("Analytics", new Microsoft.AspNetCore.Mvc.CacheProfile
+    {
+        Duration = 600,  // 10 minutes
+        Location = Microsoft.AspNetCore.Mvc.ResponseCacheLocation.Any,
+        VaryByQueryKeys = new[] { "from", "to" }
+    });
+
+    options.CacheProfiles.Add("AnalyticsShort", new Microsoft.AspNetCore.Mvc.CacheProfile
+    {
+        Duration = 300,  // 5 minutes
+        Location = Microsoft.AspNetCore.Mvc.ResponseCacheLocation.Any,
+        VaryByQueryKeys = new[] { "from", "to" }
+    });
+
+    options.CacheProfiles.Add("RealTime", new Microsoft.AspNetCore.Mvc.CacheProfile
+    {
+        Duration = 60,  // 1 minute
+        Location = Microsoft.AspNetCore.Mvc.ResponseCacheLocation.Any
+    });
+})
     .AddNewtonsoftJson();
 
 var app = builder.Build();
