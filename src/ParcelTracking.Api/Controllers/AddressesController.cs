@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ParcelTracking.Application.DTOs;
 using ParcelTracking.Application.Interfaces;
@@ -10,6 +11,7 @@ namespace ParcelTracking.Api.Controllers;
 /// </summary>
 [ApiController]
 [ApiVersion("1.0")]
+[Authorize]
 [Route("api/[controller]")]
 [Route("api/v{version:apiVersion}/[controller]")]
 [Tags("Addresses")]
