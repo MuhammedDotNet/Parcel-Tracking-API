@@ -17,8 +17,8 @@ public class TrackingService : ITrackingService
     }
 
     public async Task<TrackingEventResponse> AddEventAsync(
-        int parcelId, 
-        CreateTrackingEventRequest request, 
+        int parcelId,
+        CreateTrackingEventRequest request,
         CancellationToken ct)
     {
         // Check if parcel exists and get it
@@ -63,8 +63,20 @@ public class TrackingService : ITrackingService
         // Map EventType to ParcelStatus using switch expression
         var newStatus = MapEventTypeToStatus(request.EventType);
 
-        // Update parcel status
-        parcel.Status = newStatus;
+        // Only validate and update status if the event type represents a status change
+        if (newStatus.HasValue)
+        {
+            // Validate state transition through state machine
+            if (!ParcelStatusRules.CanTransition(parcel.Status, newStatus.Value))
+            {
+                throw new InvalidOperationException(
+                    $"Cannot transition from '{parcel.Status}' to '{newStatus.Value}'. " +
+                    $"Allowed transitions: {string.Join(", ", ParcelStatusRules.GetAllowedTransitions(parcel.Status))}.");
+            }
+
+            // Update parcel status
+            parcel.Status = newStatus.Value;
+        }
 
         // Save changes atomically
         await _repository.SaveChangesAsync(ct);
@@ -84,7 +96,7 @@ public class TrackingService : ITrackingService
         };
     }
 
-    private static ParcelStatus MapEventTypeToStatus(EventType eventType)
+    private static ParcelStatus? MapEventTypeToStatus(EventType eventType)
     {
         return eventType switch
         {
@@ -97,14 +109,14 @@ public class TrackingService : ITrackingService
             EventType.Delivered => ParcelStatus.Delivered,
             EventType.Exception => ParcelStatus.Exception,
             EventType.Returned => ParcelStatus.Returned,
-            _ => ParcelStatus.LabelCreated // Default for other types
+            _ => null // Informational events (AddressCorrection, CustomsClearance, etc.) don't change status
         };
     }
 
     public async Task<IEnumerable<TrackingEventResponse>> GetHistoryAsync(
-        int parcelId, 
-        DateTimeOffset? from, 
-        DateTimeOffset? to, 
+        int parcelId,
+        DateTimeOffset? from,
+        DateTimeOffset? to,
         CancellationToken ct)
     {
         // Check if parcel exists

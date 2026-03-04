@@ -10,7 +10,7 @@ public static class ParcelStatusRules
         [ParcelStatus.PickedUp] = [ParcelStatus.InTransit, ParcelStatus.Exception],
         [ParcelStatus.InTransit] = [ParcelStatus.OutForDelivery, ParcelStatus.Exception],
         [ParcelStatus.OutForDelivery] = [ParcelStatus.Delivered, ParcelStatus.Exception],
-        [ParcelStatus.Exception] = [ParcelStatus.Returned],
+        [ParcelStatus.Exception] = [ParcelStatus.Returned, ParcelStatus.InTransit],
         [ParcelStatus.Delivered] = [],
         [ParcelStatus.Returned] = [],
     };

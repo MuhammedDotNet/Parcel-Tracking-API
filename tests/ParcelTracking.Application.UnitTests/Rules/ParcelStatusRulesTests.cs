@@ -17,6 +17,7 @@ public class ParcelStatusRulesTests
     [InlineData(ParcelStatus.OutForDelivery, ParcelStatus.Delivered)]
     [InlineData(ParcelStatus.OutForDelivery, ParcelStatus.Exception)]
     [InlineData(ParcelStatus.Exception, ParcelStatus.Returned)]
+    [InlineData(ParcelStatus.Exception, ParcelStatus.InTransit)]
     public void CanTransition_ValidTransitions_ReturnsTrue(ParcelStatus from, ParcelStatus to)
     {
         var result = ParcelStatusRules.CanTransition(from, to);
@@ -44,7 +45,6 @@ public class ParcelStatusRulesTests
     [InlineData(ParcelStatus.OutForDelivery, ParcelStatus.Returned)]
     [InlineData(ParcelStatus.Exception, ParcelStatus.LabelCreated)]
     [InlineData(ParcelStatus.Exception, ParcelStatus.PickedUp)]
-    [InlineData(ParcelStatus.Exception, ParcelStatus.InTransit)]
     [InlineData(ParcelStatus.Exception, ParcelStatus.OutForDelivery)]
     [InlineData(ParcelStatus.Exception, ParcelStatus.Delivered)]
     [InlineData(ParcelStatus.Exception, ParcelStatus.Exception)]
@@ -128,11 +128,11 @@ public class ParcelStatusRulesTests
     }
 
     [Fact]
-    public void GetAllowedTransitions_Exception_ReturnsReturned()
+    public void GetAllowedTransitions_Exception_ReturnsReturnedAndInTransit()
     {
         var result = ParcelStatusRules.GetAllowedTransitions(ParcelStatus.Exception);
 
-        result.Should().BeEquivalentTo(new[] { ParcelStatus.Returned });
+        result.Should().BeEquivalentTo(new[] { ParcelStatus.Returned, ParcelStatus.InTransit });
     }
 
     [Fact]

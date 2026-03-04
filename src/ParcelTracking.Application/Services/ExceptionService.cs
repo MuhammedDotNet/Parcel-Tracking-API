@@ -2,6 +2,7 @@ using ParcelTracking.Application.DTOs;
 using ParcelTracking.Application.Interfaces;
 using ParcelTracking.Domain.Entities;
 using ParcelTracking.Domain.Enums;
+using ParcelTracking.Domain.Rules;
 
 namespace ParcelTracking.Application.Services;
 
@@ -32,7 +33,8 @@ public class ExceptionService : IExceptionService
         if (parcel is null)
             throw new KeyNotFoundException("Parcel not found");
 
-        if (!ExceptionEligibleStatuses.Contains(parcel.Status))
+        // Validate transition through state machine
+        if (!ParcelStatusRules.CanTransition(parcel.Status, ParcelStatus.Exception))
             throw new InvalidOperationException(
                 $"Cannot report exception for parcel in {parcel.Status} status");
 
@@ -100,7 +102,7 @@ public class ExceptionService : IExceptionService
             return (parcel, true);
         }
 
-        // Under max attempts - retry
+        // Under max attempts - retry (validated by state machine: Exception → InTransit)
         parcel.Status = ParcelStatus.InTransit;
         parcel.EstimatedDeliveryDate = request.NewEstimatedDeliveryDate;
         parcel.UpdatedAt = DateTimeOffset.UtcNow;

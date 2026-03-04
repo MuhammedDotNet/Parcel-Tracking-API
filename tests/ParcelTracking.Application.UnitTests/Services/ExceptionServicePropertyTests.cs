@@ -152,8 +152,6 @@ public class ExceptionServicePropertyTests
     // Validates: Requirements 1.5
 
     [Theory]
-    [InlineData(ParcelStatus.LabelCreated)]
-    [InlineData(ParcelStatus.PickedUp)]
     [InlineData(ParcelStatus.Delivered)]
     [InlineData(ParcelStatus.Returned)]
     [InlineData(ParcelStatus.Exception)]

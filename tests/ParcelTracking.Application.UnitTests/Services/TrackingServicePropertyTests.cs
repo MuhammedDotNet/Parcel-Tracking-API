@@ -11,24 +11,39 @@ namespace ParcelTracking.Application.UnitTests.Services;
 
 public class TrackingServicePropertyTests
 {
-    private static readonly ParcelStatus[] NonTerminalStatuses = 
-    { 
-        ParcelStatus.LabelCreated, 
-        ParcelStatus.PickedUp, 
-        ParcelStatus.InTransit, 
-        ParcelStatus.OutForDelivery, 
-        ParcelStatus.Exception 
+    private static readonly ParcelStatus[] NonTerminalStatuses =
+    {
+        ParcelStatus.LabelCreated,
+        ParcelStatus.PickedUp,
+        ParcelStatus.InTransit,
+        ParcelStatus.OutForDelivery,
+        ParcelStatus.Exception
     };
 
-    private static readonly EventType[] NonTerminalEventTypes = 
-    { 
-        EventType.PickedUp, 
-        EventType.DepartedFacility, 
-        EventType.ArrivedAtFacility, 
-        EventType.InTransit, 
-        EventType.OutForDelivery, 
-        EventType.DeliveryAttempted, 
-        EventType.Exception 
+    private static readonly EventType[] NonTerminalEventTypes =
+    {
+        EventType.PickedUp,
+        EventType.DepartedFacility,
+        EventType.ArrivedAtFacility,
+        EventType.InTransit,
+        EventType.OutForDelivery,
+        EventType.DeliveryAttempted,
+        EventType.Exception
+    };
+
+    /// <summary>
+    /// Returns a valid parcel status from which the given event type can transition.
+    /// This is necessary because TrackingService now validates transitions through ParcelStatusRules.
+    /// </summary>
+    private static ParcelStatus GetValidStatusForEventType(EventType eventType) => eventType switch
+    {
+        EventType.PickedUp => ParcelStatus.LabelCreated,
+        EventType.DepartedFacility or EventType.ArrivedAtFacility or EventType.InTransit => ParcelStatus.PickedUp,
+        EventType.OutForDelivery or EventType.DeliveryAttempted => ParcelStatus.InTransit,
+        EventType.Delivered => ParcelStatus.OutForDelivery,
+        EventType.Exception => ParcelStatus.InTransit,
+        EventType.Returned => ParcelStatus.Exception,
+        _ => ParcelStatus.InTransit
     };
 
     // Feature: tracking-events-history, Property 1: Event persistence round-trip
@@ -43,20 +58,22 @@ public class TrackingServicePropertyTests
         {
             var repoMock = new Mock<IParcelRepository>();
             var service = new TrackingService(repoMock.Object);
-            
+
             var parcelId = faker.Random.Int(1, 1000);
-            
+
             repoMock.Setup(r => r.ParcelExistsAsync(parcelId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
 
             repoMock.Setup(r => r.GetLatestTrackingEventAsync(parcelId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((TrackingEvent?)null);
 
+            var eventType = faker.PickRandom<EventType>();
+
             var parcel = new Parcel
             {
                 Id = parcelId,
                 TrackingNumber = faker.Random.AlphaNumeric(10),
-                Status = faker.PickRandom(NonTerminalStatuses),
+                Status = GetValidStatusForEventType(eventType),
                 ServiceType = faker.PickRandom<ServiceType>(),
                 ShipperAddressId = faker.Random.Int(1, 100),
                 RecipientAddressId = faker.Random.Int(1, 100)
@@ -66,7 +83,6 @@ public class TrackingServicePropertyTests
                 .ReturnsAsync(parcel);
 
             var timestamp = faker.Date.RecentOffset(days: 10);
-            var eventType = faker.PickRandom<EventType>();
             var description = faker.Lorem.Sentence();
             var locationCity = faker.Random.Bool() ? faker.Address.City() : null;
             var locationState = faker.Random.Bool() ? faker.Address.State() : null;
@@ -75,7 +91,7 @@ public class TrackingServicePropertyTests
 
             TrackingEvent? capturedEvent = null;
             repoMock.Setup(r => r.AddTrackingEventAsync(It.IsAny<TrackingEvent>(), It.IsAny<CancellationToken>()))
-                .Callback<TrackingEvent, CancellationToken>((evt, ct) => 
+                .Callback<TrackingEvent, CancellationToken>((evt, ct) =>
                 {
                     evt.Id = faker.Random.Int(1, 10000);
                     capturedEvent = evt;
@@ -107,7 +123,7 @@ public class TrackingServicePropertyTests
             response.LocationState.Should().Be(locationState);
             response.LocationCountry.Should().Be(locationCountry);
             response.DelayReason.Should().Be(delayReason);
-            
+
             capturedEvent.Should().NotBeNull();
             capturedEvent!.ParcelId.Should().Be(parcelId);
             capturedEvent.Timestamp.Should().Be(timestamp);
@@ -128,9 +144,9 @@ public class TrackingServicePropertyTests
         {
             var repoMock = new Mock<IParcelRepository>();
             var service = new TrackingService(repoMock.Object);
-            
+
             var parcelId = faker.Random.Int(1, 1000);
-            
+
             repoMock.Setup(r => r.ParcelExistsAsync(parcelId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
 
@@ -141,7 +157,7 @@ public class TrackingServicePropertyTests
             {
                 Id = parcelId,
                 TrackingNumber = faker.Random.AlphaNumeric(10),
-                Status = faker.PickRandom(NonTerminalStatuses),
+                Status = GetValidStatusForEventType(faker.PickRandom(NonTerminalEventTypes)),
                 ServiceType = faker.PickRandom<ServiceType>(),
                 ShipperAddressId = faker.Random.Int(1, 100),
                 RecipientAddressId = faker.Random.Int(1, 100)
@@ -155,14 +171,14 @@ public class TrackingServicePropertyTests
             var usedIds = new HashSet<int>();
 
             repoMock.Setup(r => r.AddTrackingEventAsync(It.IsAny<TrackingEvent>(), It.IsAny<CancellationToken>()))
-                .Callback<TrackingEvent, CancellationToken>((evt, ct) => 
+                .Callback<TrackingEvent, CancellationToken>((evt, ct) =>
                 {
                     int newId;
                     do
                     {
                         newId = faker.Random.Int(1, 100000);
                     } while (usedIds.Contains(newId));
-                    
+
                     usedIds.Add(newId);
                     evt.Id = newId;
                 })
@@ -172,7 +188,7 @@ public class TrackingServicePropertyTests
                 .Returns(Task.CompletedTask);
 
             var baseTimestamp = faker.Date.PastOffset(30);
-            
+
             for (int j = 0; j < eventCount; j++)
             {
                 var request = new CreateTrackingEventRequest
@@ -185,11 +201,14 @@ public class TrackingServicePropertyTests
                     LocationCountry = faker.Address.Country()
                 };
 
+                // Update parcel status to a valid predecessor for the next event
+                parcel.Status = GetValidStatusForEventType(request.EventType);
+
                 var response = await service.AddEventAsync(parcelId, request, CancellationToken.None);
                 eventIds.Add(response.Id);
             }
 
-            eventIds.Count.Should().Be(eventCount, 
+            eventIds.Count.Should().Be(eventCount,
                 $"all {eventCount} events should have unique IDs");
         }
     }
@@ -207,9 +226,9 @@ public class TrackingServicePropertyTests
         {
             var repoMock = new Mock<IParcelRepository>();
             var service = new TrackingService(repoMock.Object);
-            
+
             var parcelId = faker.Random.Int(1, 1000);
-            
+
             repoMock.Setup(r => r.ParcelExistsAsync(parcelId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
 
@@ -220,7 +239,7 @@ public class TrackingServicePropertyTests
             {
                 Id = parcelId,
                 TrackingNumber = faker.Random.AlphaNumeric(10),
-                Status = faker.PickRandom(NonTerminalStatuses),
+                Status = GetValidStatusForEventType(faker.PickRandom<EventType>()),
                 ServiceType = faker.PickRandom<ServiceType>(),
                 ShipperAddressId = faker.Random.Int(1, 100),
                 RecipientAddressId = faker.Random.Int(1, 100)
@@ -230,7 +249,7 @@ public class TrackingServicePropertyTests
                 .ReturnsAsync(parcel);
 
             repoMock.Setup(r => r.AddTrackingEventAsync(It.IsAny<TrackingEvent>(), It.IsAny<CancellationToken>()))
-                .Callback<TrackingEvent, CancellationToken>((evt, ct) => 
+                .Callback<TrackingEvent, CancellationToken>((evt, ct) =>
                 {
                     evt.Id = faker.Random.Int(1, 10000);
                 })
@@ -251,10 +270,13 @@ public class TrackingServicePropertyTests
                 LocationCountry = faker.Address.Country()
             };
 
+            // Set parcel to a valid predecessor state for the event
+            parcel.Status = GetValidStatusForEventType(eventType);
+
             var response = await service.AddEventAsync(parcelId, request, CancellationToken.None);
 
             response.Should().NotBeNull();
-            response.EventType.Should().Be(eventType.ToString(), 
+            response.EventType.Should().Be(eventType.ToString(),
                 $"event type {eventType} should be supported and preserved");
         }
     }
@@ -271,9 +293,9 @@ public class TrackingServicePropertyTests
         {
             var repoMock = new Mock<IParcelRepository>();
             var service = new TrackingService(repoMock.Object);
-            
+
             var parcelId = faker.Random.Int(1, 1000);
-            
+
             repoMock.Setup(r => r.ParcelExistsAsync(parcelId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
 
@@ -281,7 +303,7 @@ public class TrackingServicePropertyTests
             {
                 Id = parcelId,
                 TrackingNumber = faker.Random.AlphaNumeric(10),
-                Status = faker.PickRandom(NonTerminalStatuses),
+                Status = GetValidStatusForEventType(faker.PickRandom(NonTerminalEventTypes)),
                 ServiceType = faker.PickRandom<ServiceType>(),
                 ShipperAddressId = faker.Random.Int(1, 100),
                 RecipientAddressId = faker.Random.Int(1, 100)
@@ -317,12 +339,16 @@ public class TrackingServicePropertyTests
 
             if (latestEvent == null)
             {
+                var firstEventType = faker.PickRandom(NonTerminalEventTypes);
                 var firstEventRequest = new CreateTrackingEventRequest
                 {
                     Timestamp = faker.Date.RecentOffset(days: 1),
-                    EventType = faker.PickRandom(NonTerminalEventTypes),
+                    EventType = firstEventType,
                     Description = faker.Lorem.Sentence()
                 };
+
+                // Set parcel to a valid state for the event type
+                parcel.Status = GetValidStatusForEventType(firstEventType);
 
                 var result = await service.AddEventAsync(parcelId, firstEventRequest, CancellationToken.None);
                 result.Should().NotBeNull();
@@ -337,27 +363,38 @@ public class TrackingServicePropertyTests
                     Description = faker.Lorem.Sentence()
                 };
 
+                // Set parcel to a valid state for the event type
+                parcel.Status = GetValidStatusForEventType(validRequest.EventType);
+
                 var result = await service.AddEventAsync(parcelId, validRequest, CancellationToken.None);
                 result.Should().NotBeNull();
 
                 var invalidTimestamp = latestEvent.Timestamp.AddMinutes(-faker.Random.Int(1, 1000));
+                var invalidEventType = faker.PickRandom(NonTerminalEventTypes);
                 var invalidRequest = new CreateTrackingEventRequest
                 {
                     Timestamp = invalidTimestamp,
-                    EventType = faker.PickRandom(NonTerminalEventTypes),
+                    EventType = invalidEventType,
                     Description = faker.Lorem.Sentence()
                 };
+
+                // Set parcel to a valid state for the event type (the exception should come from timestamp, not status)
+                parcel.Status = GetValidStatusForEventType(invalidEventType);
 
                 var invalidAct = async () => await service.AddEventAsync(parcelId, invalidRequest, CancellationToken.None);
                 await invalidAct.Should().ThrowAsync<InvalidOperationException>()
                     .WithMessage($"Event timestamp {invalidTimestamp} is earlier than the most recent event at {latestEvent.Timestamp}.");
 
+                var equalEventType = faker.PickRandom(NonTerminalEventTypes);
                 var equalRequest = new CreateTrackingEventRequest
                 {
                     Timestamp = latestEvent.Timestamp,
-                    EventType = faker.PickRandom(NonTerminalEventTypes),
+                    EventType = equalEventType,
                     Description = faker.Lorem.Sentence()
                 };
+
+                // Set parcel to a valid state for the event type
+                parcel.Status = GetValidStatusForEventType(equalEventType);
 
                 var equalResult = await service.AddEventAsync(parcelId, equalRequest, CancellationToken.None);
                 equalResult.Should().NotBeNull();
@@ -390,9 +427,9 @@ public class TrackingServicePropertyTests
         {
             var repoMock = new Mock<IParcelRepository>();
             var service = new TrackingService(repoMock.Object);
-            
+
             var parcelId = faker.Random.Int(1, 1000);
-            
+
             repoMock.Setup(r => r.ParcelExistsAsync(parcelId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
 
@@ -406,7 +443,7 @@ public class TrackingServicePropertyTests
             {
                 Id = parcelId,
                 TrackingNumber = faker.Random.AlphaNumeric(10),
-                Status = faker.PickRandom(NonTerminalStatuses),
+                Status = GetValidStatusForEventType(eventType),
                 ServiceType = faker.PickRandom<ServiceType>(),
                 ShipperAddressId = faker.Random.Int(1, 100),
                 RecipientAddressId = faker.Random.Int(1, 100)
@@ -438,7 +475,7 @@ public class TrackingServicePropertyTests
 
             var response = await service.AddEventAsync(parcelId, request, CancellationToken.None);
 
-            parcel.Status.Should().Be(expectedStatus, 
+            parcel.Status.Should().Be(expectedStatus,
                 $"EventType {eventType} should map to ParcelStatus {expectedStatus}");
 
             capturedEvent.Should().NotBeNull();
