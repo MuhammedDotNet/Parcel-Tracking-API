@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using ParcelTracking.Application.DTOs;
 using ParcelTracking.Application.Interfaces;
+using ParcelTracking.Application.Mappings;
 using ParcelTracking.Domain.Enums;
 using Asp.Versioning;
 
@@ -106,7 +107,7 @@ public class ParcelsController : ControllerBase
     public async Task<IActionResult> GetExceptionParcels(CancellationToken ct)
     {
         var parcels = await _exceptionService.GetExceptionParcelsAsync(ct);
-        var response = parcels.Select(MapToParcelWithAddresses).ToList();
+        var response = parcels.Select(p => p.ToDetailResponse()).ToList();
         return Ok(response);
     }
 
@@ -263,14 +264,14 @@ public class ParcelsController : ControllerBase
 
         // 5. Apply other changes
         var updated = await _parcelService.UpdateParcelDetailsAsync(id, patchModel, ct);
-        return Ok(MapToResponse(updated));
+        return Ok(updated.ToResponse());
     }
 
     private IActionResult ToActionResult(StatusTransitionResult result)
     {
         if (result.IsSuccess)
         {
-            return Ok(MapToResponse(result.Parcel!));
+            return Ok(result.Parcel!.ToResponse());
         }
 
         return result.ErrorType switch
@@ -302,39 +303,6 @@ public class ParcelsController : ControllerBase
         };
     }
 
-    private static ParcelResponse MapToResponse(Domain.Entities.Parcel p) => new()
-    {
-        Id = p.Id,
-        TrackingNumber = p.TrackingNumber,
-        ShipperAddressId = p.ShipperAddressId,
-        RecipientAddressId = p.RecipientAddressId,
-        ServiceType = p.ServiceType.ToString(),
-        Status = p.Status.ToString(),
-        Description = p.Description ?? string.Empty,
-        Weight = new WeightDto { Value = p.Weight, Unit = p.WeightUnit.ToString() },
-        Dimensions = new DimensionsDto
-        {
-            Length = p.Length,
-            Width = p.Width,
-            Height = p.Height,
-            Unit = p.DimensionUnit.ToString()
-        },
-        DeclaredValue = new DeclaredValueDto { Amount = p.DeclaredValue, Currency = p.Currency },
-        ContentItems = p.ContentItems.Select(ci => new ContentItemDto
-        {
-            HsCode = ci.HsCode,
-            Description = ci.Description,
-            Quantity = ci.Quantity,
-            UnitValue = ci.UnitValue,
-            Currency = ci.Currency,
-            Weight = ci.Weight,
-            WeightUnit = ci.WeightUnit.ToString(),
-            CountryOfOrigin = ci.CountryOfOrigin
-        }).ToList(),
-        EstimatedDeliveryDate = p.EstimatedDeliveryDate,
-        CreatedAt = p.CreatedAt
-    };
-
     /// <summary>Report a delivery exception for a parcel.</summary>
     [HttpPost("{id:int}/exception")]
     [ProducesResponseType(typeof(ParcelResponse), StatusCodes.Status200OK)]
@@ -348,7 +316,7 @@ public class ParcelsController : ControllerBase
         try
         {
             var parcel = await _exceptionService.ReportExceptionAsync(id, request, ct);
-            return Ok(MapToResponse(parcel));
+            return Ok(parcel.ToResponse());
         }
         catch (KeyNotFoundException)
         {
@@ -394,11 +362,11 @@ public class ParcelsController : ControllerBase
                     Detail = "Maximum delivery attempts (3) reached. Parcel has been returned to sender.",
                     Status = StatusCodes.Status400BadRequest,
                     Instance = HttpContext.Request.Path,
-                    Extensions = { ["parcel"] = MapToResponse(parcel) }
+                    Extensions = { ["parcel"] = parcel.ToResponse() }
                 });
             }
 
-            return Ok(MapToResponse(parcel));
+            return Ok(parcel.ToResponse());
         }
         catch (KeyNotFoundException)
         {
@@ -431,48 +399,4 @@ public class ParcelsController : ControllerBase
             });
         }
     }
-
-    private static ParcelDetailResponse MapToParcelWithAddresses(Domain.Entities.Parcel p) => new()
-    {
-        Id = p.Id,
-        TrackingNumber = p.TrackingNumber,
-        Status = p.Status.ToString(),
-        Weight = p.Weight,
-        WeightUnit = p.WeightUnit.ToString(),
-        Description = p.Description ?? string.Empty,
-        ShipperAddress = p.ShipperAddress != null ? new AddressResponse
-        {
-            Id = p.ShipperAddress.Id,
-            Street1 = p.ShipperAddress.Street1,
-            Street2 = p.ShipperAddress.Street2,
-            City = p.ShipperAddress.City,
-            State = p.ShipperAddress.State,
-            PostalCode = p.ShipperAddress.PostalCode,
-            CountryCode = p.ShipperAddress.CountryCode,
-            IsResidential = p.ShipperAddress.IsResidential,
-            ContactName = p.ShipperAddress.ContactName,
-            CompanyName = p.ShipperAddress.CompanyName,
-            Phone = p.ShipperAddress.Phone,
-            Email = p.ShipperAddress.Email
-        } : null!,
-        RecipientAddress = p.RecipientAddress != null ? new AddressResponse
-        {
-            Id = p.RecipientAddress.Id,
-            Street1 = p.RecipientAddress.Street1,
-            Street2 = p.RecipientAddress.Street2,
-            City = p.RecipientAddress.City,
-            State = p.RecipientAddress.State,
-            PostalCode = p.RecipientAddress.PostalCode,
-            CountryCode = p.RecipientAddress.CountryCode,
-            IsResidential = p.RecipientAddress.IsResidential,
-            ContactName = p.RecipientAddress.ContactName,
-            CompanyName = p.RecipientAddress.CompanyName,
-            Phone = p.RecipientAddress.Phone,
-            Email = p.RecipientAddress.Email
-        } : null!,
-        CreatedAt = p.CreatedAt,
-        DeliveredAt = p.ActualDeliveryDate,
-        DaysInTransit = (int)(DateTimeOffset.UtcNow - p.CreatedAt).TotalDays,
-        IsDelivered = p.Status == ParcelStatus.Delivered
-    };
 }

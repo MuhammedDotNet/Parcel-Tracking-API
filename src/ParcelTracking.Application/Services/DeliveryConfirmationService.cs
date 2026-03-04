@@ -2,6 +2,7 @@ using ParcelTracking.Application.DTOs;
 using ParcelTracking.Application.Interfaces;
 using ParcelTracking.Domain.Entities;
 using ParcelTracking.Domain.Enums;
+using ParcelTracking.Domain.Exceptions;
 
 namespace ParcelTracking.Application.Services;
 
@@ -39,23 +40,20 @@ public class DeliveryConfirmationService : IDeliveryConfirmationService
         // 2. Validate parcel status — Delivered means duplicate, others may be invalid
         if (parcel.Status == ParcelStatus.Delivered)
         {
-            throw new InvalidOperationException(
-                $"CONFLICT:Delivery confirmation already exists for parcel '{trackingNumber}'.");
+            throw new DuplicateDeliveryConfirmationException(trackingNumber);
         }
 
         if (parcel.Status != ParcelStatus.InTransit && parcel.Status != ParcelStatus.OutForDelivery)
         {
-            throw new InvalidOperationException(
-                $"Parcel status '{parcel.Status}' is not valid for delivery confirmation. " +
-                $"Valid statuses: InTransit, OutForDelivery.");
+            throw new InvalidParcelStatusException(
+                parcel.Status, ParcelStatus.InTransit, ParcelStatus.OutForDelivery);
         }
 
         // 3. Check for duplicate confirmation
         var alreadyExists = await _confirmationRepository.ExistsForParcelAsync(parcel.Id, ct);
         if (alreadyExists)
         {
-            throw new InvalidOperationException(
-                $"CONFLICT:Delivery confirmation already exists for parcel '{trackingNumber}'.");
+            throw new DuplicateDeliveryConfirmationException(trackingNumber);
         }
 
         var now = DateTimeOffset.UtcNow;

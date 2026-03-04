@@ -7,6 +7,7 @@ using ParcelTracking.Application.Interfaces;
 using ParcelTracking.Application.Services;
 using ParcelTracking.Domain.Entities;
 using ParcelTracking.Domain.Enums;
+using ParcelTracking.Domain.Exceptions;
 
 namespace ParcelTracking.Application.UnitTests.Services;
 
@@ -138,8 +139,8 @@ public class DeliveryConfirmationPropertyTests
 
         var act = async () => await svc.ConfirmDeliveryAsync(parcel.TrackingNumber, request, CancellationToken.None);
 
-        var ex = await act.Should().ThrowAsync<InvalidOperationException>();
-        ex.Which.Message.Should().Contain(parcel.TrackingNumber);
+        var ex = await act.Should().ThrowAsync<DuplicateDeliveryConfirmationException>();
+        ex.Which.TrackingNumber.Should().Be(parcel.TrackingNumber);
     }
 
     // Feature: delivery-confirmation, Property 6: Automatic tracking event creation

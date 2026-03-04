@@ -5,6 +5,7 @@ using ParcelTracking.Application.Interfaces;
 using ParcelTracking.Application.Services;
 using ParcelTracking.Domain.Entities;
 using ParcelTracking.Domain.Enums;
+using ParcelTracking.Domain.Exceptions;
 
 namespace ParcelTracking.Application.UnitTests.Services;
 
@@ -127,7 +128,7 @@ public class DeliveryConfirmationServiceTests
     [InlineData(ParcelStatus.PickedUp)]
     [InlineData(ParcelStatus.Exception)]
     [InlineData(ParcelStatus.Returned)]
-    public async Task ConfirmDeliveryAsync_InvalidStatus_ThrowsInvalidOperationException(ParcelStatus status)
+    public async Task ConfirmDeliveryAsync_InvalidStatus_ThrowsInvalidParcelStatusException(ParcelStatus status)
     {
         var parcel = CreateTestParcel(status);
 
@@ -138,14 +139,14 @@ public class DeliveryConfirmationServiceTests
         var act = async () => await _service.ConfirmDeliveryAsync(
             parcel.TrackingNumber, CreateTestRequest(), CancellationToken.None);
 
-        var ex = await act.Should().ThrowAsync<InvalidOperationException>();
-        ex.Which.Message.Should().Contain(status.ToString());
-        ex.Which.Message.Should().Contain("InTransit");
-        ex.Which.Message.Should().Contain("OutForDelivery");
+        var ex = await act.Should().ThrowAsync<InvalidParcelStatusException>();
+        ex.Which.CurrentStatus.Should().Be(status);
+        ex.Which.ValidStatuses.Should().Contain(ParcelStatus.InTransit);
+        ex.Which.ValidStatuses.Should().Contain(ParcelStatus.OutForDelivery);
     }
 
     [Fact]
-    public async Task ConfirmDeliveryAsync_DeliveredStatus_ThrowsConflictException()
+    public async Task ConfirmDeliveryAsync_DeliveredStatus_ThrowsDuplicateDeliveryConfirmationException()
     {
         var parcel = CreateTestParcel(ParcelStatus.Delivered);
 
@@ -156,13 +157,12 @@ public class DeliveryConfirmationServiceTests
         var act = async () => await _service.ConfirmDeliveryAsync(
             parcel.TrackingNumber, CreateTestRequest(), CancellationToken.None);
 
-        var ex = await act.Should().ThrowAsync<InvalidOperationException>();
-        ex.Which.Message.Should().StartWith("CONFLICT:");
-        ex.Which.Message.Should().Contain(parcel.TrackingNumber);
+        var ex = await act.Should().ThrowAsync<DuplicateDeliveryConfirmationException>();
+        ex.Which.TrackingNumber.Should().Be(parcel.TrackingNumber);
     }
 
     [Fact]
-    public async Task ConfirmDeliveryAsync_DuplicateConfirmation_ThrowsConflictException()
+    public async Task ConfirmDeliveryAsync_DuplicateConfirmation_ThrowsDuplicateDeliveryConfirmationException()
     {
         var parcel = CreateTestParcel();
 
@@ -176,9 +176,8 @@ public class DeliveryConfirmationServiceTests
         var act = async () => await _service.ConfirmDeliveryAsync(
             parcel.TrackingNumber, CreateTestRequest(), CancellationToken.None);
 
-        var ex = await act.Should().ThrowAsync<InvalidOperationException>();
-        ex.Which.Message.Should().StartWith("CONFLICT:");
-        ex.Which.Message.Should().Contain(parcel.TrackingNumber);
+        var ex = await act.Should().ThrowAsync<DuplicateDeliveryConfirmationException>();
+        ex.Which.TrackingNumber.Should().Be(parcel.TrackingNumber);
     }
 
     [Fact]

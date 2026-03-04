@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ParcelTracking.Application.DTOs;
 using ParcelTracking.Application.Interfaces;
+using ParcelTracking.Domain.Exceptions;
 using Asp.Versioning;
 
 namespace ParcelTracking.Api.Controllers;
@@ -66,22 +67,32 @@ public class DeliveryConfirmationController : ControllerBase
                 Instance = HttpContext.Request.Path
             });
         }
-        catch (InvalidOperationException ex) when (ex.Message.StartsWith("CONFLICT:"))
+        catch (DuplicateDeliveryConfirmationException ex)
         {
             return Conflict(new ProblemDetails
             {
                 Title = "Duplicate delivery confirmation",
-                Detail = ex.Message["CONFLICT:".Length..],
+                Detail = ex.Message,
                 Status = StatusCodes.Status409Conflict,
                 Instance = HttpContext.Request.Path,
                 Extensions = { ["trackingNumber"] = trackingNumber }
+            });
+        }
+        catch (InvalidParcelStatusException ex)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Invalid parcel status",
+                Detail = ex.Message,
+                Status = StatusCodes.Status400BadRequest,
+                Instance = HttpContext.Request.Path
             });
         }
         catch (InvalidOperationException ex)
         {
             return BadRequest(new ProblemDetails
             {
-                Title = "Invalid parcel status",
+                Title = "Invalid operation",
                 Detail = ex.Message,
                 Status = StatusCodes.Status400BadRequest,
                 Instance = HttpContext.Request.Path
