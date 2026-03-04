@@ -15,7 +15,7 @@ public class AnalyticsService : IAnalyticsService
         _context = context;
     }
 
-    public async Task<DeliveryStatsResponse> GetDeliveryStatsAsync(DateTimeOffset from, DateTimeOffset to)
+    public async Task<DeliveryStatsResponse> GetDeliveryStatsAsync(DateTimeOffset from, DateTimeOffset to, CancellationToken ct = default)
     {
         var query = _context.Parcels
             .Where(p => p.CreatedAt >= from && p.CreatedAt <= to);
@@ -28,7 +28,7 @@ public class AnalyticsService : IAnalyticsService
                 Status = g.Key,
                 Count = g.Count()
             })
-            .ToListAsync();
+            .ToListAsync(ct);
 
         var totalParcels = statusCounts.Sum(s => s.Count);
         var delivered = statusCounts
@@ -51,7 +51,7 @@ public class AnalyticsService : IAnalyticsService
                 p.CreatedAt,
                 p.ActualDeliveryDate
             })
-            .ToListAsync();
+            .ToListAsync(ct);
 
         if (deliveredParcels.Any())
         {
@@ -68,7 +68,7 @@ public class AnalyticsService : IAnalyticsService
                 .CountAsync(p => p.Status == ParcelStatus.Delivered
                               && p.ActualDeliveryDate != null
                               && p.EstimatedDeliveryDate != null
-                              && p.ActualDeliveryDate <= p.EstimatedDeliveryDate);
+                              && p.ActualDeliveryDate <= p.EstimatedDeliveryDate, ct);
 
             onTimePercentage = Math.Round((double)onTimeCount / delivered * 100, 1);
         }
@@ -86,7 +86,7 @@ public class AnalyticsService : IAnalyticsService
         };
     }
 
-    public async Task<List<ExceptionReasonResponse>> GetTopExceptionReasonsAsync(DateTimeOffset from, DateTimeOffset to)
+    public async Task<List<ExceptionReasonResponse>> GetTopExceptionReasonsAsync(DateTimeOffset from, DateTimeOffset to, CancellationToken ct = default)
     {
         var exceptionEvents = _context.TrackingEvents
             .Where(e => e.EventType == EventType.Exception
@@ -94,7 +94,7 @@ public class AnalyticsService : IAnalyticsService
                      && e.Timestamp >= from
                      && e.Timestamp <= to);
 
-        var totalExceptions = await exceptionEvents.CountAsync();
+        var totalExceptions = await exceptionEvents.CountAsync(ct);
 
         if (totalExceptions == 0)
             return new List<ExceptionReasonResponse>();
@@ -108,7 +108,7 @@ public class AnalyticsService : IAnalyticsService
                 Count = g.Count()
             })
             .OrderByDescending(g => g.Count)
-            .ToListAsync();
+            .ToListAsync(ct);
 
         // Compute percentages in memory
         var reasons = grouped.Select(g => new ExceptionReasonResponse
@@ -121,36 +121,38 @@ public class AnalyticsService : IAnalyticsService
         return reasons;
     }
 
-    public async Task<List<ServiceBreakdownResponse>> GetServiceBreakdownAsync(DateTimeOffset from, DateTimeOffset to)
+    public async Task<List<ServiceBreakdownResponse>> GetServiceBreakdownAsync(DateTimeOffset from, DateTimeOffset to, CancellationToken ct = default)
     {
-        var breakdown = await _context.Parcels
+        // Fetch raw data from DB — compute TotalHours in memory to avoid provider-specific SQL translation issues
+        var rawData = await _context.Parcels
             .Where(p => p.CreatedAt >= from && p.CreatedAt <= to)
             .GroupBy(p => p.ServiceType)
             .Select(g => new
             {
                 ServiceType = g.Key,
                 Count = g.Count(),
-                DeliveredCount = g.Count(p =>
-                    p.Status == ParcelStatus.Delivered
-                    && p.ActualDeliveryDate != null),
-                TotalDeliveryHours = g
-                    .Where(p => p.Status == ParcelStatus.Delivered
-                             && p.ActualDeliveryDate != null)
-                    .Sum(p => (p.ActualDeliveryDate!.Value - p.CreatedAt).TotalHours)
+                DeliveredParcels = g
+                    .Where(p => p.Status == ParcelStatus.Delivered && p.ActualDeliveryDate != null)
+                    .Select(p => new { p.CreatedAt, p.ActualDeliveryDate })
+                    .ToList()
             })
-            .ToListAsync();
+            .ToListAsync(ct);
 
-        return breakdown.Select(b => new ServiceBreakdownResponse
+        return rawData.Select(b =>
         {
-            ServiceType = b.ServiceType.ToString(),
-            Count = b.Count,
-            AverageDeliveryTimeHours = b.DeliveredCount > 0
-                ? Math.Round(b.TotalDeliveryHours / b.DeliveredCount, 1)
-                : 0
+            var totalHours = b.DeliveredParcels.Sum(p => (p.ActualDeliveryDate!.Value - p.CreatedAt).TotalHours);
+            return new ServiceBreakdownResponse
+            {
+                ServiceType = b.ServiceType.ToString(),
+                Count = b.Count,
+                AverageDeliveryTimeHours = b.DeliveredParcels.Count > 0
+                    ? Math.Round(totalHours / b.DeliveredParcels.Count, 1)
+                    : 0
+            };
         }).ToList();
     }
 
-    public async Task<List<PipelineStatusResponse>> GetPipelineAsync()
+    public async Task<List<PipelineStatusResponse>> GetPipelineAsync(CancellationToken ct = default)
     {
         // Query all parcels and group by status
         var counts = await _context.Parcels
@@ -160,7 +162,7 @@ public class AnalyticsService : IAnalyticsService
                 Status = g.Key,
                 Count = g.Count()
             })
-            .ToListAsync();
+            .ToListAsync(ct);
 
         // Get all ParcelStatus enum values
         var allStatuses = Enum.GetValues<ParcelStatus>();
@@ -175,3 +177,4 @@ public class AnalyticsService : IAnalyticsService
         .ToList();
     }
 }
+

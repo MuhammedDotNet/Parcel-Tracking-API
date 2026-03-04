@@ -42,7 +42,7 @@ public class AnalyticsController : ControllerBase
         var fromDate = from ?? DateTimeOffset.UtcNow.AddDays(-30);
         var toDate = to ?? DateTimeOffset.UtcNow;
 
-        var result = await _analytics.GetDeliveryStatsAsync(fromDate, toDate);
+        var result = await _analytics.GetDeliveryStatsAsync(fromDate, toDate, ct);
         return Ok(result);
     }
 
@@ -65,7 +65,7 @@ public class AnalyticsController : ControllerBase
         var fromDate = from ?? DateTimeOffset.UtcNow.AddDays(-30);
         var toDate = to ?? DateTimeOffset.UtcNow;
 
-        var result = await _analytics.GetTopExceptionReasonsAsync(fromDate, toDate);
+        var result = await _analytics.GetTopExceptionReasonsAsync(fromDate, toDate, ct);
         return Ok(result);
     }
 
@@ -88,7 +88,7 @@ public class AnalyticsController : ControllerBase
         var fromDate = from ?? DateTimeOffset.UtcNow.AddDays(-30);
         var toDate = to ?? DateTimeOffset.UtcNow;
 
-        var result = await _analytics.GetServiceBreakdownAsync(fromDate, toDate);
+        var result = await _analytics.GetServiceBreakdownAsync(fromDate, toDate, ct);
         return Ok(result);
     }
 
@@ -102,7 +102,7 @@ public class AnalyticsController : ControllerBase
     [ProducesResponseType(typeof(List<Application.DTOs.PipelineStatusResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPipeline(CancellationToken ct)
     {
-        var result = await _analytics.GetPipelineAsync();
+        var result = await _analytics.GetPipelineAsync(ct);
         return Ok(result);
     }
 }
