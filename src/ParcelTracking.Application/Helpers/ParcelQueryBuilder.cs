@@ -13,7 +13,7 @@ public static class ParcelQueryBuilder
     /// <param name="searchParams">The search parameters containing filter criteria</param>
     /// <returns>A filtered IQueryable</returns>
     public static IQueryable<Parcel> ApplyFilters(
-        IQueryable<Parcel> query, 
+        IQueryable<Parcel> query,
         ParcelSearchParams searchParams)
     {
         // Status filter
@@ -43,8 +43,8 @@ public static class ParcelQueryBuilder
         if (!string.IsNullOrWhiteSpace(searchParams.City))
         {
             var city = searchParams.City.Trim();
-            query = query.Where(p => 
-                p.ShipperAddress.City == city || 
+            query = query.Where(p =>
+                p.ShipperAddress.City == city ||
                 p.RecipientAddress.City == city);
         }
 
@@ -52,8 +52,8 @@ public static class ParcelQueryBuilder
         if (!string.IsNullOrWhiteSpace(searchParams.Country))
         {
             var country = searchParams.Country.Trim();
-            query = query.Where(p => 
-                p.ShipperAddress.CountryCode == country || 
+            query = query.Where(p =>
+                p.ShipperAddress.CountryCode == country ||
                 p.RecipientAddress.CountryCode == country);
         }
 
@@ -62,7 +62,7 @@ public static class ParcelQueryBuilder
         if (!string.IsNullOrWhiteSpace(searchParams.Keyword))
         {
             var keyword = searchParams.Keyword.Trim().ToLower();
-            query = query.Where(p => 
+            query = query.Where(p =>
                 p.TrackingNumber.ToLower().Contains(keyword) ||
                 (p.Description != null && p.Description.ToLower().Contains(keyword)));
         }
@@ -125,7 +125,7 @@ public static class ParcelQueryBuilder
         {
             // Decode the cursor
             var (sortField, sortValue, id) = CursorHelper.Decode(searchParams.Cursor);
-            
+
             var sortBy = searchParams.SortBy?.ToLower() ?? "createdat";
             var descending = searchParams.SortDescending;
 
@@ -138,9 +138,9 @@ public static class ParcelQueryBuilder
                 _ => ApplyCursorForCreatedAt(query, sortValue, id, descending) // Default
             };
         }
-        catch
+        catch (FormatException)
         {
-            // Invalid cursor: fallback to first page (return query unchanged)
+            // Invalid or tampered cursor: gracefully fall back to first page
             return query;
         }
     }
@@ -251,20 +251,20 @@ public static class ParcelQueryBuilder
         int totalCount)
     {
         var pageSize = searchParams.PageSize;
-        
+
         // Determine if there's a next page by checking if we got more items than requested
         var hasNextPage = parcels.Count > pageSize;
-        
+
         // Take only the requested page size (remove the extra item used for detection)
         var itemsForPage = hasNextPage ? parcels.Take(pageSize).ToList() : parcels;
-        
+
         // Generate nextCursor from the last item on the page
         string? nextCursor = null;
         if (hasNextPage && itemsForPage.Count > 0)
         {
             var lastItem = itemsForPage[itemsForPage.Count - 1];
             var sortBy = searchParams.SortBy?.ToLower() ?? "createdat";
-            
+
             // Get the sort value based on the sort field
             var sortValue = sortBy switch
             {
@@ -273,10 +273,10 @@ public static class ParcelQueryBuilder
                 "status" => lastItem.Status.ToString(),
                 _ => lastItem.CreatedAt.ToString("O") // Default
             };
-            
+
             nextCursor = CursorHelper.Encode(sortBy, sortValue, lastItem.Id);
         }
-        
+
         // Map entities to ParcelSearchResponse DTOs
         var items = itemsForPage.Select(p => new ParcelSearchResponse
         {
@@ -289,7 +289,7 @@ public static class ParcelQueryBuilder
             CreatedAt = p.CreatedAt,
             EstimatedDeliveryDate = p.EstimatedDeliveryDate
         }).ToList();
-        
+
         return new PagedResult<ParcelSearchResponse>
         {
             Items = items,

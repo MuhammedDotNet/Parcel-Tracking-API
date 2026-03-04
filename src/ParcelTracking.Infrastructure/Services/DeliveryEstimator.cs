@@ -11,15 +11,15 @@ public sealed class DeliveryEstimator : IDeliveryEstimator
     private static readonly Dictionary<string, int> TransitDays =
         new(StringComparer.OrdinalIgnoreCase)
         {
-            ["Economy"] = 10,
-            ["Standard"] = 7,
-            ["Express"] = 3,
+            ["Economy"] = 7,
+            ["Standard"] = 5,
+            ["Express"] = 2,
             ["Overnight"] = 1,
         };
 
     public DateTimeOffset Estimate(string serviceType, DateTimeOffset registrationDate)
     {
-        var days = TransitDays.GetValueOrDefault(serviceType, 7);
+        var days = TransitDays.GetValueOrDefault(serviceType, 5);
         return AddBusinessDays(registrationDate, days);
     }
 

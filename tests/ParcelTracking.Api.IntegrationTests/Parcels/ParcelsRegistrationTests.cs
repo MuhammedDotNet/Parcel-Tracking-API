@@ -129,7 +129,7 @@ public class ParcelsRegistrationTests : IClassFixture<ParcelTrackingWebAppFactor
     }
 
     [Fact]
-    public async Task Register_ExpressService_EstimatedDeliveryAtLeast3DaysOut()
+    public async Task Register_ExpressService_EstimatedDeliveryAtLeast2DaysOut()
     {
         var (shipperId, recipientId) = await ParcelTestHelpers.SeedAddressesAsync(_client);
         var request = ParcelTestHelpers.BuildRequest(shipperId, recipientId) with { ServiceType = "Express" };
@@ -140,8 +140,8 @@ public class ParcelsRegistrationTests : IClassFixture<ParcelTrackingWebAppFactor
         var parcel = await response.Content.ReadFromJsonAsync<ParcelResponse>();
         parcel!.EstimatedDeliveryDate.Should().NotBeNull();
         parcel.EstimatedDeliveryDate!.Value.Should()
-            .BeAfter(DateTimeOffset.UtcNow.AddDays(2),
-                because: "Express service takes at least 3 business days");
+            .BeAfter(DateTimeOffset.UtcNow.AddDays(1),
+                because: "Express service takes at least 2 business days");
     }
 
     [Fact]

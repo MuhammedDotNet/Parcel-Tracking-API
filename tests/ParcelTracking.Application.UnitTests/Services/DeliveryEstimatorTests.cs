@@ -35,7 +35,7 @@ public class DeliveryEstimatorTests
     }
 
     [Fact]
-    public void Estimate_Express_Returns3BusinessDaysFromMonday()
+    public void Estimate_Express_Returns2BusinessDaysFromMonday()
     {
         // Arrange — Monday
         var monday = new DateTimeOffset(2026, 2, 23, 12, 0, 0, TimeSpan.Zero);
@@ -43,12 +43,12 @@ public class DeliveryEstimatorTests
         // Act
         var result = _sut.Estimate("Express", monday);
 
-        // Assert — Mon+3 business days = Thursday
-        result.DayOfWeek.Should().Be(DayOfWeek.Thursday);
+        // Assert — Mon+2 business days = Wednesday
+        result.DayOfWeek.Should().Be(DayOfWeek.Wednesday);
     }
 
     [Fact]
-    public void Estimate_Standard_Returns7BusinessDaysFromMonday()
+    public void Estimate_Standard_Returns5BusinessDaysFromMonday()
     {
         // Arrange — Monday 23 Feb 2026
         var monday = new DateTimeOffset(2026, 2, 23, 12, 0, 0, TimeSpan.Zero);
@@ -56,12 +56,12 @@ public class DeliveryEstimatorTests
         // Act
         var result = _sut.Estimate("Standard", monday);
 
-        // Assert — 7 business days skipping 2 weekends = Wed 4 Mar 2026
-        result.Date.Should().Be(new DateTime(2026, 3, 4));
+        // Assert — 5 business days from Mon = Mon 2 Mar 2026
+        result.Date.Should().Be(new DateTime(2026, 3, 2));
     }
 
     [Fact]
-    public void Estimate_Economy_Returns10BusinessDaysFromMonday()
+    public void Estimate_Economy_Returns7BusinessDaysFromMonday()
     {
         // Arrange — Monday 23 Feb 2026
         var monday = new DateTimeOffset(2026, 2, 23, 12, 0, 0, TimeSpan.Zero);
@@ -69,12 +69,12 @@ public class DeliveryEstimatorTests
         // Act
         var result = _sut.Estimate("Economy", monday);
 
-        // Assert — 10 business days = Mon 9 Mar 2026
-        result.Date.Should().Be(new DateTime(2026, 3, 9));
+        // Assert — 7 business days skipping 1 weekend = Wed 4 Mar 2026
+        result.Date.Should().Be(new DateTime(2026, 3, 4));
     }
 
     [Fact]
-    public void Estimate_UnknownServiceType_DefaultsTo7BusinessDays()
+    public void Estimate_UnknownServiceType_DefaultsTo5BusinessDays()
     {
         // Arrange
         var monday = new DateTimeOffset(2026, 2, 23, 12, 0, 0, TimeSpan.Zero);
@@ -82,7 +82,7 @@ public class DeliveryEstimatorTests
         // Act
         var result = _sut.Estimate("CustomType", monday);
 
-        // Assert — same result as Standard (7 days)
+        // Assert — defaults to 7 days (same as Economy/Standard max)
         var expected = _sut.Estimate("Standard", monday);
         result.Date.Should().Be(expected.Date);
     }
