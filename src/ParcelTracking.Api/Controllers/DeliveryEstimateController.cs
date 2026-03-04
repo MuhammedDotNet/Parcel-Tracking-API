@@ -1,10 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using ParcelTracking.Application.DTOs;
 using ParcelTracking.Application.Interfaces;
 using ParcelTracking.Application.Services;
-using ParcelTracking.Infrastructure.Data;
 using Asp.Versioning;
 
 namespace ParcelTracking.Api.Controllers;
@@ -22,14 +20,14 @@ namespace ParcelTracking.Api.Controllers;
 [Tags("Delivery Estimation")]
 public class DeliveryEstimateController : ControllerBase
 {
-    private readonly ParcelTrackingDbContext _context;
+    private readonly IParcelRepository _repository;
     private readonly IDeliveryEstimationService _estimationService;
 
     public DeliveryEstimateController(
-        ParcelTrackingDbContext context,
+        IParcelRepository repository,
         IDeliveryEstimationService estimationService)
     {
-        _context = context;
+        _repository = repository;
         _estimationService = estimationService;
     }
 
@@ -46,10 +44,7 @@ public class DeliveryEstimateController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetEstimate(int id, CancellationToken ct)
     {
-        var parcel = await _context.Parcels
-            .Include(p => p.ShipperAddress)
-            .Include(p => p.RecipientAddress)
-            .FirstOrDefaultAsync(p => p.Id == id, ct);
+        var parcel = await _repository.GetByIdWithAddressesAsync(id, ct);
 
         if (parcel is null)
         {
@@ -81,11 +76,7 @@ public class DeliveryEstimateController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Recalculate(int id, CancellationToken ct)
     {
-        var parcel = await _context.Parcels
-            .Include(p => p.ShipperAddress)
-            .Include(p => p.RecipientAddress)
-            .Include(p => p.TrackingEvents.OrderByDescending(e => e.Timestamp))
-            .FirstOrDefaultAsync(p => p.Id == id, ct);
+        var parcel = await _repository.GetByIdWithAddressesAndEventsAsync(id, ct);
 
         if (parcel is null)
         {
@@ -111,7 +102,7 @@ public class DeliveryEstimateController : ControllerBase
             result.LatestDelivery.ToDateTime(TimeOnly.MinValue),
             TimeSpan.Zero);
         parcel.UpdatedAt = DateTimeOffset.UtcNow;
-        await _context.SaveChangesAsync(ct);
+        await _repository.SaveChangesAsync(ct);
 
         var response = MapToResponse(result, parcel);
         return Ok(response);
@@ -131,3 +122,4 @@ public class DeliveryEstimateController : ControllerBase
         };
     }
 }
+

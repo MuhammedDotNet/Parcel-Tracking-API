@@ -19,4 +19,6 @@ public interface IParcelRepository
     Task<List<Parcel>> ToListAsync(IQueryable<Parcel> query, CancellationToken ct);
     Task<Parcel?> GetByIdWithRecipientAsync(int id, CancellationToken ct);
     Task<List<Parcel>> GetExceptionParcelsAsync(CancellationToken ct);
+    Task<Parcel?> GetByIdWithAddressesAsync(int id, CancellationToken ct);
+    Task<Parcel?> GetByIdWithAddressesAndEventsAsync(int id, CancellationToken ct);
 }

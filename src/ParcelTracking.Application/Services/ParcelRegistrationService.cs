@@ -1,5 +1,6 @@
 using ParcelTracking.Application.DTOs;
 using ParcelTracking.Application.Interfaces;
+using ParcelTracking.Application.Mappings;
 using ParcelTracking.Domain.Entities;
 using ParcelTracking.Domain.Enums;
 
@@ -84,39 +85,7 @@ public sealed class ParcelRegistrationService : IParcelRegistrationService
         await _repository.AddTrackingEventAsync(initialEvent, ct);
         await _repository.SaveChangesAsync(ct);
 
-        return MapToResponse(parcel);
+        return parcel.ToResponse();
     }
-
-    private static ParcelResponse MapToResponse(Parcel p) => new()
-    {
-        Id = p.Id,
-        TrackingNumber = p.TrackingNumber,
-        ShipperAddressId = p.ShipperAddressId,
-        RecipientAddressId = p.RecipientAddressId,
-        ServiceType = p.ServiceType.ToString(),
-        Status = p.Status.ToString(),
-        Description = p.Description ?? string.Empty,
-        Weight = new WeightDto { Value = p.Weight, Unit = p.WeightUnit.ToString() },
-        Dimensions = new DimensionsDto
-        {
-            Length = p.Length,
-            Width = p.Width,
-            Height = p.Height,
-            Unit = p.DimensionUnit.ToString()
-        },
-        DeclaredValue = new DeclaredValueDto { Amount = p.DeclaredValue, Currency = p.Currency },
-        ContentItems = p.ContentItems.Select(ci => new ContentItemDto
-        {
-            HsCode = ci.HsCode,
-            Description = ci.Description,
-            Quantity = ci.Quantity,
-            UnitValue = ci.UnitValue,
-            Currency = ci.Currency,
-            Weight = ci.Weight,
-            WeightUnit = ci.WeightUnit.ToString(),
-            CountryOfOrigin = ci.CountryOfOrigin
-        }).ToList(),
-        EstimatedDeliveryDate = p.EstimatedDeliveryDate,
-        CreatedAt = p.CreatedAt
-    };
 }
+

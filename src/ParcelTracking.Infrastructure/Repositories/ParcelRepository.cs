@@ -96,5 +96,18 @@ public sealed class ParcelRepository : IParcelRepository
             .Where(p => p.Status == ParcelStatus.Exception)
             .OrderBy(p => p.UpdatedAt)
             .ToListAsync(ct);
+
+    public Task<Parcel?> GetByIdWithAddressesAsync(int id, CancellationToken ct)
+        => _db.Parcels
+            .Include(p => p.ShipperAddress)
+            .Include(p => p.RecipientAddress)
+            .FirstOrDefaultAsync(p => p.Id == id, ct);
+
+    public Task<Parcel?> GetByIdWithAddressesAndEventsAsync(int id, CancellationToken ct)
+        => _db.Parcels
+            .Include(p => p.ShipperAddress)
+            .Include(p => p.RecipientAddress)
+            .Include(p => p.TrackingEvents.OrderByDescending(e => e.Timestamp))
+            .FirstOrDefaultAsync(p => p.Id == id, ct);
 }
 
