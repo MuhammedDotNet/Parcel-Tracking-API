@@ -5,12 +5,12 @@
 # rate limiting, and CORS preflight requests.
 #
 # Prerequisites:
-# - API running on http://localhost:5000
+# - API running on http://localhost:5244
 # - Database seeded with test data
 # - API Key: dev-api-key-12345 (from appsettings.Development.json)
 ###############################################################################
 
-@baseUrl = http://localhost:5000
+@baseUrl = http://localhost:5244
 @apiKey = dev-api-key-12345
 @apiVersion = v1
 
