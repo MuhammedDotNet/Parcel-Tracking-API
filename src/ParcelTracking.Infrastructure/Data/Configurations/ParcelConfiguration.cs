@@ -85,5 +85,8 @@ public class ParcelConfiguration : IEntityTypeConfiguration<Parcel>
 
         builder.Property(p => p.DeclaredValue)
             .HasPrecision(12, 2);
+
+        builder.Property(p => p.DeliveryTimeZoneId)
+            .HasMaxLength(50);
     }
 }

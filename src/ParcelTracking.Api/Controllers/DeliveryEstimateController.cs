@@ -101,6 +101,7 @@ public class DeliveryEstimateController : ControllerBase
         parcel.EstimatedDeliveryDate = new DateTimeOffset(
             result.LatestDelivery.ToDateTime(TimeOnly.MinValue),
             TimeSpan.Zero);
+        parcel.DeliveryTimeZoneId = result.DeliveryTimeZoneId;
         parcel.UpdatedAt = DateTimeOffset.UtcNow;
         await _repository.SaveChangesAsync(ct);
 
@@ -118,7 +119,8 @@ public class DeliveryEstimateController : ControllerBase
             LatestDelivery = result.LatestDelivery,
             Confidence = result.Confidence.ToString(),
             ServiceType = parcel.ServiceType.ToString(),
-            IsInternational = DeliveryEstimationService.IsInternational(parcel)
+            IsInternational = DeliveryEstimationService.IsInternational(parcel),
+            DeliveryTimeZoneId = result.DeliveryTimeZoneId
         };
     }
 }

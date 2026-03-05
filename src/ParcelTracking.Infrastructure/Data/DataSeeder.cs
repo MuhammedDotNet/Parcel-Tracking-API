@@ -17,7 +17,7 @@ public static class DataSeeder
         // 1. Generate 50 addresses
         var addressFaker = new Faker<Address>()
             .RuleFor(a => a.Street1, f => f.Address.StreetAddress())
-            .RuleFor(a => a.Street2, f => f.Random.Bool(0.3f) 
+            .RuleFor(a => a.Street2, f => f.Random.Bool(0.3f)
                 ? f.Address.SecondaryAddress() : null)
             .RuleFor(a => a.City, f => f.Address.City())
             .RuleFor(a => a.State, f => f.Address.StateAbbr())
@@ -25,7 +25,7 @@ public static class DataSeeder
             .RuleFor(a => a.CountryCode, f => "US")
             .RuleFor(a => a.IsResidential, f => f.Random.Bool(0.7f))
             .RuleFor(a => a.ContactName, f => f.Name.FullName())
-            .RuleFor(a => a.CompanyName, (f, a) => 
+            .RuleFor(a => a.CompanyName, (f, a) =>
                 a.IsResidential ? null : f.Company.CompanyName())
             .RuleFor(a => a.Phone, f => f.Phone.PhoneNumber("###-###-####"))
             .RuleFor(a => a.Email, f => f.Internet.Email());
@@ -36,7 +36,7 @@ public static class DataSeeder
 
         // 2. Generate 200 parcels
         var parcelFaker = new Faker<Parcel>()
-            .RuleFor(p => p.TrackingNumber, f => 
+            .RuleFor(p => p.TrackingNumber, f =>
                 $"PKG-{f.Date.Recent(30):yyyyMMdd}-{f.Random.AlphaNumeric(6).ToUpper()}")
             .RuleFor(p => p.Description, f => f.Commerce.ProductName())
             .RuleFor(p => p.ServiceType, f => f.PickRandom<ServiceType>())
@@ -52,6 +52,8 @@ public static class DataSeeder
             .RuleFor(p => p.DeclaredValue, f => f.Finance.Amount(10m, 2000m))
             .RuleFor(p => p.Currency, f => "USD")
             .RuleFor(p => p.EstimatedDeliveryDate, f => f.Date.SoonOffset(7))
+            .RuleFor(p => p.DeliveryTimeZoneId, f => f.PickRandom(
+                "America/New_York", "America/Chicago", "America/Los_Angeles", "America/Denver"))
             .RuleFor(p => p.CreatedAt, f => f.Date.RecentOffset(30))
             .RuleFor(p => p.UpdatedAt, (f, p) => p.CreatedAt)
             .RuleFor(p => p.DeliveryAttempts, f => 0);
@@ -108,14 +110,14 @@ public static class DataSeeder
 
         var contentFaker = new Faker<ParcelContentItem>()
             .RuleFor(ci => ci.HsCode, f => f.PickRandom(hsCodePairs).Item1)
-            .RuleFor(ci => ci.Description, (f, ci) => 
+            .RuleFor(ci => ci.Description, (f, ci) =>
                 hsCodePairs.First(p => p.Item1 == ci.HsCode).Item2)
             .RuleFor(ci => ci.Quantity, f => f.Random.Int(1, 5))
             .RuleFor(ci => ci.UnitValue, f => f.Finance.Amount(10m, 500m))
             .RuleFor(ci => ci.Currency, f => "USD")
             .RuleFor(ci => ci.Weight, f => f.Random.Decimal(0.1m, 5m))
             .RuleFor(ci => ci.WeightUnit, f => WeightUnit.Lb)
-            .RuleFor(ci => ci.CountryOfOrigin, f => 
+            .RuleFor(ci => ci.CountryOfOrigin, f =>
                 f.PickRandom("CN", "US", "DE", "JP", "KR"));
 
         foreach (var parcel in parcels)
@@ -134,9 +136,9 @@ public static class DataSeeder
         var confirmationFaker = new Faker<DeliveryConfirmation>()
             .RuleFor(dc => dc.ReceivedBy, f => f.Name.FullName())
             .RuleFor(dc => dc.DeliveryLocation, f => f.PickRandom(
-                "Front door", "Reception desk", "Mailroom", 
+                "Front door", "Reception desk", "Mailroom",
                 "Side gate", "Garage"))
-            .RuleFor(dc => dc.SignatureImage, f => 
+            .RuleFor(dc => dc.SignatureImage, f =>
                 Convert.ToBase64String(f.Random.Bytes(64)))
             .RuleFor(dc => dc.DeliveredAt, f => f.Date.RecentOffset(7));
 
@@ -151,7 +153,7 @@ public static class DataSeeder
         // 6. Generate 30 parcel watchers with random parcel assignments
         var watcherFaker = new Faker<ParcelWatcher>()
             .RuleFor(w => w.Email, f => f.Internet.Email())
-            .RuleFor(w => w.Name, f => f.Random.Bool(0.8f) 
+            .RuleFor(w => w.Name, f => f.Random.Bool(0.8f)
                 ? f.Name.FullName() : null)
             .RuleFor(w => w.CreatedAt, f => f.Date.RecentOffset(30));
 

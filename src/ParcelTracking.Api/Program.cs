@@ -163,6 +163,7 @@ builder.Services.AddScoped<IDeliveryConfirmationService, DeliveryConfirmationSer
 builder.Services.AddScoped<IExceptionService, ExceptionService>();
 
 // Delivery Estimation
+builder.Services.AddSingleton<ITimeZoneResolver, SimpleTimeZoneResolver>();
 builder.Services.AddScoped<IDeliveryEstimationService, DeliveryEstimationService>();
 
 // Analytics

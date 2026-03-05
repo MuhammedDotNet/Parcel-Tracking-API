@@ -43,6 +43,7 @@ public static class ParcelMappingExtensions
             CountryOfOrigin = ci.CountryOfOrigin
         }).ToList(),
         EstimatedDeliveryDate = p.EstimatedDeliveryDate,
+        DeliveryTimeZoneId = p.DeliveryTimeZoneId,
         CreatedAt = p.CreatedAt
     };
 

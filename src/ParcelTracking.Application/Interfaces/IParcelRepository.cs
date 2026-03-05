@@ -8,6 +8,7 @@ public interface IParcelRepository
     Task AddTrackingEventAsync(TrackingEvent trackingEvent, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
     Task<bool> AddressExistsAsync(int addressId, CancellationToken ct);
+    Task<Address?> GetAddressAsync(int addressId, CancellationToken ct);
     Task<Parcel?> GetByIdWithDetailsAsync(int id, CancellationToken ct);
     Task<Parcel?> GetByTrackingNumberWithRecipientAsync(string trackingNumber, CancellationToken ct);
     Task<bool> ParcelExistsAsync(int parcelId, CancellationToken ct);

@@ -7,6 +7,13 @@ namespace ParcelTracking.Application.Services;
 
 public class DeliveryEstimationService : IDeliveryEstimationService
 {
+    private readonly ITimeZoneResolver _timeZoneResolver;
+
+    public DeliveryEstimationService(ITimeZoneResolver timeZoneResolver)
+    {
+        _timeZoneResolver = timeZoneResolver;
+    }
+
     private static readonly Dictionary<ServiceType, TransitTimeRange> DomesticTransitTimes = new()
     {
         [ServiceType.Economy] = new TransitTimeRange(5, 7),
@@ -23,12 +30,14 @@ public class DeliveryEstimationService : IDeliveryEstimationService
         var isInternational = IsInternational(parcel);
         var transitRange = GetTransitTimeRange(parcel.ServiceType, isInternational);
         var startDate = DateOnly.FromDateTime(parcel.CreatedAt.UtcDateTime);
+        var tzId = _timeZoneResolver.GetIanaTimeZone(parcel.RecipientAddress);
 
         return new DeliveryEstimateResult
         {
             EarliestDelivery = AddBusinessDays(startDate, transitRange.MinDays),
             LatestDelivery = AddBusinessDays(startDate, transitRange.MaxDays),
-            Confidence = DetermineConfidence(parcel.Status)
+            Confidence = DetermineConfidence(parcel.Status),
+            DeliveryTimeZoneId = tzId
         };
     }
 
@@ -41,12 +50,14 @@ public class DeliveryEstimationService : IDeliveryEstimationService
             DateOnly.FromDateTime(parcel.CreatedAt.UtcDateTime), fromDate);
         var remainingMin = Math.Max(1, transitRange.MinDays - elapsed);
         var remainingMax = Math.Max(1, transitRange.MaxDays - elapsed);
+        var tzId = _timeZoneResolver.GetIanaTimeZone(parcel.RecipientAddress);
 
         return new DeliveryEstimateResult
         {
             EarliestDelivery = AddBusinessDays(fromDate, remainingMin),
             LatestDelivery = AddBusinessDays(fromDate, remainingMax),
-            Confidence = DetermineConfidence(parcel.Status)
+            Confidence = DetermineConfidence(parcel.Status),
+            DeliveryTimeZoneId = tzId
         };
     }
 

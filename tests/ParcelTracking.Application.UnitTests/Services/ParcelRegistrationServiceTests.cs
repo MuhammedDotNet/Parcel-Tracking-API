@@ -10,29 +10,34 @@ namespace ParcelTracking.Application.UnitTests.Services;
 
 public class ParcelRegistrationServiceTests
 {
-    private readonly Mock<IParcelRepository>        _repoMock       = new();
-    private readonly Mock<ITrackingNumberGenerator> _generatorMock  = new();
-    private readonly Mock<IDeliveryEstimator>       _estimatorMock  = new();
-    private readonly ParcelRegistrationService      _sut;
+    private readonly Mock<IParcelRepository> _repoMock = new();
+    private readonly Mock<ITrackingNumberGenerator> _generatorMock = new();
+    private readonly Mock<IDeliveryEstimator> _estimatorMock = new();
+    private readonly Mock<ITimeZoneResolver> _tzResolverMock = new();
+    private readonly ParcelRegistrationService _sut;
 
     public ParcelRegistrationServiceTests()
     {
+        _tzResolverMock.Setup(r => r.GetIanaTimeZone(It.IsAny<Address>()))
+            .Returns("America/New_York");
+
         _sut = new ParcelRegistrationService(
             _repoMock.Object,
             _generatorMock.Object,
-            _estimatorMock.Object);
+            _estimatorMock.Object,
+            _tzResolverMock.Object);
     }
 
     private static RegisterParcelRequest ValidRequest(int shipperId = 1, int recipientId = 2) => new()
     {
-        ShipperAddressId   = shipperId,
+        ShipperAddressId = shipperId,
         RecipientAddressId = recipientId,
-        ServiceType        = "Express",
-        Description        = "Test parcel",
-        Weight             = new WeightDto { Value = 2.5m, Unit = "kg" },
-        Dimensions         = new DimensionsDto { Length = 40, Width = 30, Height = 10, Unit = "cm" },
-        DeclaredValue      = new DeclaredValueDto { Amount = 150m, Currency = "USD" },
-        ContentItems       =
+        ServiceType = "Express",
+        Description = "Test parcel",
+        Weight = new WeightDto { Value = 2.5m, Unit = "kg" },
+        Dimensions = new DimensionsDto { Length = 40, Width = 30, Height = 10, Unit = "cm" },
+        DeclaredValue = new DeclaredValueDto { Amount = 150m, Currency = "USD" },
+        ContentItems =
         [
             new ContentItemDto
             {
@@ -96,6 +101,8 @@ public class ParcelRegistrationServiceTests
         _generatorMock.Setup(g => g.Generate()).Returns("PKG-20260225-ABCDEF");
         _estimatorMock.Setup(e => e.Estimate(It.IsAny<string>(), It.IsAny<DateTimeOffset>()))
                       .Returns(DateTimeOffset.UtcNow.AddDays(3));
+        _repoMock.Setup(r => r.GetAddressAsync(2, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(new Address { Id = 2, State = "NY", CountryCode = "US", Street1 = "1 St", City = "NYC", PostalCode = "10001", ContactName = "Test", Phone = "555" });
         _repoMock.Setup(r => r.AddAsync(It.IsAny<Parcel>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
         _repoMock.Setup(r => r.AddTrackingEventAsync(It.IsAny<TrackingEvent>(), It.IsAny<CancellationToken>()))
@@ -127,6 +134,8 @@ public class ParcelRegistrationServiceTests
         _generatorMock.Setup(g => g.Generate()).Returns("PKG-TEST-000001");
         _estimatorMock.Setup(e => e.Estimate(It.IsAny<string>(), It.IsAny<DateTimeOffset>()))
                       .Returns(DateTimeOffset.UtcNow.AddDays(3));
+        _repoMock.Setup(r => r.GetAddressAsync(2, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(new Address { Id = 2, State = "NY", CountryCode = "US", Street1 = "1 St", City = "NYC", PostalCode = "10001", ContactName = "Test", Phone = "555" });
         _repoMock.Setup(r => r.AddAsync(It.IsAny<Parcel>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
         _repoMock.Setup(r => r.AddTrackingEventAsync(It.IsAny<TrackingEvent>(), It.IsAny<CancellationToken>()))
@@ -150,6 +159,8 @@ public class ParcelRegistrationServiceTests
         _generatorMock.Setup(g => g.Generate()).Returns("PKG-TEST-000002");
         _estimatorMock.Setup(e => e.Estimate(It.IsAny<string>(), It.IsAny<DateTimeOffset>()))
                       .Returns(DateTimeOffset.UtcNow.AddDays(3));
+        _repoMock.Setup(r => r.GetAddressAsync(2, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(new Address { Id = 2, State = "NY", CountryCode = "US", Street1 = "1 St", City = "NYC", PostalCode = "10001", ContactName = "Test", Phone = "555" });
         _repoMock.Setup(r => r.AddAsync(It.IsAny<Parcel>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
         _repoMock.Setup(r => r.AddTrackingEventAsync(It.IsAny<TrackingEvent>(), It.IsAny<CancellationToken>()))

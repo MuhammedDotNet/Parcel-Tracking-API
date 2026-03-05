@@ -11,15 +11,18 @@ public sealed class ParcelRegistrationService : IParcelRegistrationService
     private readonly IParcelRepository _repository;
     private readonly ITrackingNumberGenerator _trackingNumberGenerator;
     private readonly IDeliveryEstimator _deliveryEstimator;
+    private readonly ITimeZoneResolver _timeZoneResolver;
 
     public ParcelRegistrationService(
         IParcelRepository repository,
         ITrackingNumberGenerator trackingNumberGenerator,
-        IDeliveryEstimator deliveryEstimator)
+        IDeliveryEstimator deliveryEstimator,
+        ITimeZoneResolver timeZoneResolver)
     {
         _repository = repository;
         _trackingNumberGenerator = trackingNumberGenerator;
         _deliveryEstimator = deliveryEstimator;
+        _timeZoneResolver = timeZoneResolver;
     }
 
     public async Task<ParcelResponse> RegisterAsync(
@@ -35,7 +38,11 @@ public sealed class ParcelRegistrationService : IParcelRegistrationService
             throw new KeyNotFoundException(
                 $"Recipient address {request.RecipientAddressId} not found.");
 
-        // Step 2: Build the Parcel entity
+        // Step 2: Load recipient address to resolve delivery timezone
+        var recipientAddress = await _repository.GetAddressAsync(request.RecipientAddressId, ct);
+        var deliveryTimeZoneId = _timeZoneResolver.GetIanaTimeZone(recipientAddress!);
+
+        // Step 3: Build the Parcel entity
         var now = DateTimeOffset.UtcNow;
         var trackingNumber = _trackingNumberGenerator.Generate();
 
@@ -56,6 +63,7 @@ public sealed class ParcelRegistrationService : IParcelRegistrationService
             DeclaredValue = request.DeclaredValue.Amount,
             Currency = request.DeclaredValue.Currency,
             EstimatedDeliveryDate = _deliveryEstimator.Estimate(request.ServiceType, now),
+            DeliveryTimeZoneId = deliveryTimeZoneId,
             CreatedAt = now,
             UpdatedAt = now,
             ContentItems = request.ContentItems.Select(ci => new ParcelContentItem
@@ -71,7 +79,7 @@ public sealed class ParcelRegistrationService : IParcelRegistrationService
             }).ToList()
         };
 
-        // Step 3: Create the initial tracking event
+        // Step 4: Create the initial tracking event
         var initialEvent = new TrackingEvent
         {
             Parcel = parcel,
@@ -80,7 +88,7 @@ public sealed class ParcelRegistrationService : IParcelRegistrationService
             Timestamp = now
         };
 
-        // Step 4: Persist both atomically in one SaveChangesAsync call
+        // Step 5: Persist both atomically in one SaveChangesAsync call
         await _repository.AddAsync(parcel, ct);
         await _repository.AddTrackingEventAsync(initialEvent, ct);
         await _repository.SaveChangesAsync(ct);

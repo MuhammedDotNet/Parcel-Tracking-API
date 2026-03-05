@@ -7,4 +7,5 @@ public record DeliveryEstimateResponse
     public string Confidence { get; init; } = string.Empty;
     public string ServiceType { get; init; } = string.Empty;
     public bool IsInternational { get; init; }
+    public string? DeliveryTimeZoneId { get; init; }
 }

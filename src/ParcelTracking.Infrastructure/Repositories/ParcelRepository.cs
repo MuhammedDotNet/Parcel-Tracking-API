@@ -27,6 +27,9 @@ public sealed class ParcelRepository : IParcelRepository
     public Task<bool> AddressExistsAsync(int addressId, CancellationToken ct)
         => _db.Addresses.AnyAsync(a => a.Id == addressId, ct);
 
+    public Task<Address?> GetAddressAsync(int addressId, CancellationToken ct)
+        => _db.Addresses.FirstOrDefaultAsync(a => a.Id == addressId, ct);
+
     public Task<Parcel?> GetByIdWithDetailsAsync(int id, CancellationToken ct)
         => _db.Parcels
             .Include(p => p.ShipperAddress)
