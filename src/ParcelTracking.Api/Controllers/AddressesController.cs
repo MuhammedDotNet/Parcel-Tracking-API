@@ -12,7 +12,6 @@ namespace ParcelTracking.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Authorize]
-[Route("api/[controller]")]
 [Route("api/v{version:apiVersion}/[controller]")]
 [Tags("Addresses")]
 public class AddressesController : ControllerBase

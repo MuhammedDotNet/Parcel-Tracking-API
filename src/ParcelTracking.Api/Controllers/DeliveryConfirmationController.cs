@@ -15,7 +15,6 @@ namespace ParcelTracking.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Authorize]
-[Route("api/parcels/{trackingNumber}/delivery-confirmation")]
 [Route("api/v{version:apiVersion}/parcels/{trackingNumber}/delivery-confirmation")]
 [Tags("Delivery Confirmation")]
 public class DeliveryConfirmationController : ControllerBase

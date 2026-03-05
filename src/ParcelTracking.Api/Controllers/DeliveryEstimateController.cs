@@ -15,7 +15,6 @@ namespace ParcelTracking.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Authorize]
-[Route("api/parcels/{id:int}/delivery-estimate")]
 [Route("api/v{version:apiVersion}/parcels/{id:int}/delivery-estimate")]
 [Tags("Delivery Estimation")]
 public class DeliveryEstimateController : ControllerBase
