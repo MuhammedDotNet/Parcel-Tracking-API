@@ -6,15 +6,16 @@ using ParcelTracking.Application.DTOs;
 
 namespace ParcelTracking.Api.IntegrationTests.Parcels;
 
-public class ParcelsRetrievalTests : IClassFixture<ParcelTrackingWebAppFactory>
+[Collection("Database")]
+public class ParcelsRetrievalTests : IAsyncLifetime
 {
     private readonly HttpClient _client;
-    private readonly ParcelTrackingWebAppFactory _factory;
+    private readonly IntegrationTestFixture _fixture;
 
-    public ParcelsRetrievalTests(ParcelTrackingWebAppFactory factory)
+    public ParcelsRetrievalTests(IntegrationTestFixture fixture)
     {
-        _factory = factory;
-        _client = factory.CreateClient();
+        _fixture = fixture;
+        _client = fixture.Factory.CreateClient();
         _client.DefaultRequestHeaders.Add("X-Api-Key", "dev-api-key-12345");
     }
 
@@ -60,10 +61,13 @@ public class ParcelsRetrievalTests : IClassFixture<ParcelTrackingWebAppFactory>
     [Fact]
     public async Task GetById_WithoutApiKey_Returns401()
     {
-        using var anonClient = _factory.CreateClient();
+        using var anonClient = _fixture.Factory.CreateClient();
 
         var response = await anonClient.GetAsync("/api/parcels/1");
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
+
+    public Task InitializeAsync() => _fixture.ResetDatabaseAsync();
+    public Task DisposeAsync() => Task.CompletedTask;
 }

@@ -9,7 +9,12 @@ namespace ParcelTracking.Api.IntegrationTests;
 
 public class ParcelTrackingWebAppFactory : WebApplicationFactory<Program>
 {
-    private readonly string _dbName = $"ParcelTracking_Test_{Guid.NewGuid()}";
+    private readonly string _connectionString;
+
+    public ParcelTrackingWebAppFactory(string connectionString)
+    {
+        _connectionString = connectionString;
+    }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -37,9 +42,9 @@ public class ParcelTrackingWebAppFactory : WebApplicationFactory<Program>
             foreach (var descriptor in descriptorsToRemove)
                 services.Remove(descriptor);
 
-            // Use InMemory database for integration tests
+            // Use real PostgreSQL from Testcontainers
             services.AddDbContext<ParcelTrackingDbContext>(options =>
-                options.UseInMemoryDatabase(_dbName));
+                options.UseNpgsql(_connectionString));
         });
     }
 }

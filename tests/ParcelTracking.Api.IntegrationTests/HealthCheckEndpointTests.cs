@@ -9,15 +9,16 @@ using Xunit;
 
 namespace ParcelTracking.Api.IntegrationTests;
 
-public class HealthCheckEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
+[Collection("Database")]
+public class HealthCheckEndpointTests : IAsyncLifetime
 {
     private readonly HttpClient _client;
-    private readonly ParcelTrackingWebAppFactory _factory;
+    private readonly IntegrationTestFixture _fixture;
 
-    public HealthCheckEndpointTests(ParcelTrackingWebAppFactory factory)
+    public HealthCheckEndpointTests(IntegrationTestFixture fixture)
     {
-        _factory = factory;
-        _client = factory.CreateClient();
+        _fixture = fixture;
+        _client = fixture.Factory.CreateClient();
         _client.DefaultRequestHeaders.Add("X-Api-Key", "dev-api-key-12345");
     }
 
@@ -92,4 +93,7 @@ public class HealthCheckEndpointTests : IClassFixture<ParcelTrackingWebAppFactor
         Assert.All(responses, response => 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode));
     }
+
+    public Task InitializeAsync() => _fixture.ResetDatabaseAsync();
+    public Task DisposeAsync() => Task.CompletedTask;
 }

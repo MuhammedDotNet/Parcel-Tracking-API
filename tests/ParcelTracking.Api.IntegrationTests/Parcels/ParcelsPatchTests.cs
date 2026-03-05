@@ -5,15 +5,16 @@ using ParcelTracking.Application.DTOs;
 
 namespace ParcelTracking.Api.IntegrationTests.Parcels;
 
-public class ParcelsPatchTests : IClassFixture<ParcelTrackingWebAppFactory>
+[Collection("Database")]
+public class ParcelsPatchTests : IAsyncLifetime
 {
     private readonly HttpClient _client;
-    private readonly ParcelTrackingWebAppFactory _factory;
+    private readonly IntegrationTestFixture _fixture;
 
-    public ParcelsPatchTests(ParcelTrackingWebAppFactory factory)
+    public ParcelsPatchTests(IntegrationTestFixture fixture)
     {
-        _factory = factory;
-        _client = factory.CreateClient();
+        _fixture = fixture;
+        _client = fixture.Factory.CreateClient();
         _client.DefaultRequestHeaders.Add("X-Api-Key", "dev-api-key-12345");
     }
 
@@ -132,7 +133,7 @@ public class ParcelsPatchTests : IClassFixture<ParcelTrackingWebAppFactory>
     [Fact]
     public async Task Patch_WithoutApiKey_Returns401()
     {
-        using var anonClient = _factory.CreateClient();
+        using var anonClient = _fixture.Factory.CreateClient();
         var patchJson = "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"test\"}]";
         var patchContent = new StringContent(patchJson, System.Text.Encoding.UTF8, "application/json-patch+json");
 
@@ -140,4 +141,7 @@ public class ParcelsPatchTests : IClassFixture<ParcelTrackingWebAppFactory>
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
+
+    public Task InitializeAsync() => _fixture.ResetDatabaseAsync();
+    public Task DisposeAsync() => Task.CompletedTask;
 }

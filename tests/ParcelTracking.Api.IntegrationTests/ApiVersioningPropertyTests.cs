@@ -9,13 +9,15 @@ namespace ParcelTracking.Api.IntegrationTests;
 /// <summary>
 /// Property-based tests for API versioning functionality.
 /// </summary>
-public class ApiVersioningPropertyTests : IClassFixture<ParcelTrackingWebAppFactory>
+[Collection("Database")]
+public class ApiVersioningPropertyTests : IAsyncLifetime
 {
     private readonly HttpClient _client;
 
-    public ApiVersioningPropertyTests(ParcelTrackingWebAppFactory factory)
+    public ApiVersioningPropertyTests(IntegrationTestFixture fixture)
     {
-        _client = factory.CreateClient();
+        _fixture = fixture;
+        _client = fixture.Factory.CreateClient();
         _client.DefaultRequestHeaders.Add("X-Api-Key", "dev-api-key-12345");
     }
 
@@ -120,4 +122,9 @@ public class ApiVersioningPropertyTests : IClassFixture<ParcelTrackingWebAppFact
                 System.Net.HttpStatusCode.MethodNotAllowed);
         }
     }
+
+    private readonly IntegrationTestFixture _fixture;
+
+    public Task InitializeAsync() => _fixture.ResetDatabaseAsync();
+    public Task DisposeAsync() => Task.CompletedTask;
 }

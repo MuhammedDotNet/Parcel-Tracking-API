@@ -9,15 +9,16 @@ using ParcelTracking.Infrastructure.Data;
 
 namespace ParcelTracking.Api.IntegrationTests;
 
-public class DeliveryEstimationEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
+[Collection("Database")]
+public class DeliveryEstimationEndpointTests : IAsyncLifetime
 {
     private readonly HttpClient _client;
-    private readonly ParcelTrackingWebAppFactory _factory;
+    private readonly IntegrationTestFixture _fixture;
 
-    public DeliveryEstimationEndpointTests(ParcelTrackingWebAppFactory factory)
+    public DeliveryEstimationEndpointTests(IntegrationTestFixture fixture)
     {
-        _factory = factory;
-        _client = factory.CreateClient();
+        _fixture = fixture;
+        _client = fixture.Factory.CreateClient();
         _client.DefaultRequestHeaders.Add("X-Api-Key", "dev-api-key-12345");
     }
 
@@ -122,7 +123,7 @@ public class DeliveryEstimationEndpointTests : IClassFixture<ParcelTrackingWebAp
         // Update status if needed (can't set status during creation)
         if (status != ParcelStatus.LabelCreated)
         {
-            using var scope = _factory.Services.CreateScope();
+            using var scope = _fixture.Factory.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<ParcelTrackingDbContext>();
             var entity = await db.Parcels.FindAsync(parcel!.Id);
             if (entity is not null)
@@ -361,7 +362,7 @@ public class DeliveryEstimationEndpointTests : IClassFixture<ParcelTrackingWebAp
             status: ParcelStatus.Exception);
 
         // Add a tracking event to simulate an exception
-        using (var scope = _factory.Services.CreateScope())
+        using (var scope = _fixture.Factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<ParcelTrackingDbContext>();
             var parcel = await db.Parcels
@@ -499,7 +500,7 @@ public class DeliveryEstimationEndpointTests : IClassFixture<ParcelTrackingWebAp
                 "Persisted confidence should match recalculated value");
 
             // Verify that the database was actually updated by checking the parcel directly
-            using var scope = _factory.Services.CreateScope();
+            using var scope = _fixture.Factory.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<ParcelTrackingDbContext>();
             var parcel = await db.Parcels.FindAsync(parcelId);
             
@@ -774,7 +775,7 @@ public class DeliveryEstimationEndpointTests : IClassFixture<ParcelTrackingWebAp
             status: ParcelStatus.LabelCreated);
 
         // Remove any tracking events to test the fallback behavior
-        using (var scope = _factory.Services.CreateScope())
+        using (var scope = _fixture.Factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<ParcelTrackingDbContext>();
             var parcel = await db.Parcels
@@ -789,7 +790,7 @@ public class DeliveryEstimationEndpointTests : IClassFixture<ParcelTrackingWebAp
         }
 
         // Verify the parcel now has no tracking events
-        using (var scope = _factory.Services.CreateScope())
+        using (var scope = _fixture.Factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<ParcelTrackingDbContext>();
             var parcel = await db.Parcels
@@ -822,7 +823,7 @@ public class DeliveryEstimationEndpointTests : IClassFixture<ParcelTrackingWebAp
             "When no tracking events exist, recalculation should use current date as starting point");
 
         // Verify the database was updated
-        using (var scope = _factory.Services.CreateScope())
+        using (var scope = _fixture.Factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<ParcelTrackingDbContext>();
             var parcel = await db.Parcels.FindAsync(parcelId);
@@ -844,4 +845,7 @@ public class DeliveryEstimationEndpointTests : IClassFixture<ParcelTrackingWebAp
                 "UpdatedAt should be updated to a time before the recalculation completed");
         }
     }
+
+    public Task InitializeAsync() => _fixture.ResetDatabaseAsync();
+    public Task DisposeAsync() => Task.CompletedTask;
 }

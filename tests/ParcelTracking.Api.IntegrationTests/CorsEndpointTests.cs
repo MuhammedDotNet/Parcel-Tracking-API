@@ -7,15 +7,16 @@ namespace ParcelTracking.Api.IntegrationTests;
 /// Integration tests for CORS functionality.
 /// Tests Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6
 /// </summary>
-public class CorsEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
+[Collection("Database")]
+public class CorsEndpointTests : IAsyncLifetime
 {
     private readonly HttpClient _client;
-    private readonly ParcelTrackingWebAppFactory _factory;
+    private readonly IntegrationTestFixture _fixture;
 
-    public CorsEndpointTests(ParcelTrackingWebAppFactory factory)
+    public CorsEndpointTests(IntegrationTestFixture fixture)
     {
-        _factory = factory;
-        _client = factory.CreateClient();
+        _fixture = fixture;
+        _client = fixture.Factory.CreateClient();
         _client.DefaultRequestHeaders.Add("X-Api-Key", "dev-api-key-12345");
     }
 
@@ -108,4 +109,7 @@ public class CorsEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
         // Assert
         response.Headers.Should().ContainKey("Access-Control-Allow-Origin");
     }
+
+    public Task InitializeAsync() => _fixture.ResetDatabaseAsync();
+    public Task DisposeAsync() => Task.CompletedTask;
 }

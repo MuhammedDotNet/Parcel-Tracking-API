@@ -10,15 +10,16 @@ using ParcelTracking.Infrastructure.Data;
 
 namespace ParcelTracking.Api.IntegrationTests;
 
-public class DeliveryConfirmationEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
+[Collection("Database")]
+public class DeliveryConfirmationEndpointTests : IAsyncLifetime
 {
     private readonly HttpClient _authedClient;
-    private readonly ParcelTrackingWebAppFactory _factory;
+    private readonly IntegrationTestFixture _fixture;
 
-    public DeliveryConfirmationEndpointTests(ParcelTrackingWebAppFactory factory)
+    public DeliveryConfirmationEndpointTests(IntegrationTestFixture fixture)
     {
-        _factory = factory;
-        _authedClient = factory.CreateClient();
+        _fixture = fixture;
+        _authedClient = fixture.Factory.CreateClient();
         _authedClient.DefaultRequestHeaders.Add("X-Api-Key", "dev-api-key-12345");
     }
 
@@ -92,7 +93,7 @@ public class DeliveryConfirmationEndpointTests : IClassFixture<ParcelTrackingWeb
         // Update parcel status if needed
         if (status != ParcelStatus.LabelCreated || estimatedDelivery is not null)
         {
-            using var scope = _factory.Services.CreateScope();
+            using var scope = _fixture.Factory.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<ParcelTrackingDbContext>();
             var entity = await db.Parcels.FindAsync(parcel.Id);
             entity!.Status = status;
@@ -105,7 +106,7 @@ public class DeliveryConfirmationEndpointTests : IClassFixture<ParcelTrackingWeb
 
     private async Task SeedConfirmationDirectlyAsync(int parcelId, DateTimeOffset deliveredAt)
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = _fixture.Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ParcelTrackingDbContext>();
         db.DeliveryConfirmations.Add(new DeliveryConfirmation
         {
@@ -425,4 +426,7 @@ public class DeliveryConfirmationEndpointTests : IClassFixture<ParcelTrackingWeb
         problem.Should().NotBeNull();
         problem!.Detail.Should().Contain("PKG-NONEXISTENT-999");
     }
+
+    public Task InitializeAsync() => _fixture.ResetDatabaseAsync();
+    public Task DisposeAsync() => Task.CompletedTask;
 }

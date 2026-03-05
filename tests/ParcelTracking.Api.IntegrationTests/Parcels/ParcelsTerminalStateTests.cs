@@ -5,13 +5,15 @@ using ParcelTracking.Application.DTOs;
 
 namespace ParcelTracking.Api.IntegrationTests.Parcels;
 
-public class ParcelsTerminalStateTests : IClassFixture<ParcelTrackingWebAppFactory>
+[Collection("Database")]
+public class ParcelsTerminalStateTests : IAsyncLifetime
 {
     private readonly HttpClient _client;
 
-    public ParcelsTerminalStateTests(ParcelTrackingWebAppFactory factory)
+    public ParcelsTerminalStateTests(IntegrationTestFixture fixture)
     {
-        _client = factory.CreateClient();
+        _fixture = fixture;
+        _client = fixture.Factory.CreateClient();
         _client.DefaultRequestHeaders.Add("X-Api-Key", "dev-api-key-12345");
     }
 
@@ -62,4 +64,9 @@ public class ParcelsTerminalStateTests : IClassFixture<ParcelTrackingWebAppFacto
         errorContent.Should().Contain("terminal_state");
         errorContent.Should().Contain("Returned");
     }
+
+    private readonly IntegrationTestFixture _fixture;
+
+    public Task InitializeAsync() => _fixture.ResetDatabaseAsync();
+    public Task DisposeAsync() => Task.CompletedTask;
 }

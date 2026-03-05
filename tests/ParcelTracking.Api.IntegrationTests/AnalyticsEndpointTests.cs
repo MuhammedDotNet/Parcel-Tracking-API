@@ -12,15 +12,16 @@ namespace ParcelTracking.Api.IntegrationTests;
 /// <summary>
 /// Integration tests for Analytics endpoints
 /// </summary>
-public class AnalyticsEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
+[Collection("Database")]
+public class AnalyticsEndpointTests : IAsyncLifetime
 {
     private readonly HttpClient _client;
-    private readonly ParcelTrackingWebAppFactory _factory;
+    private readonly IntegrationTestFixture _fixture;
 
-    public AnalyticsEndpointTests(ParcelTrackingWebAppFactory factory)
+    public AnalyticsEndpointTests(IntegrationTestFixture fixture)
     {
-        _factory = factory;
-        _client = factory.CreateClient();
+        _fixture = fixture;
+        _client = fixture.Factory.CreateClient();
         _client.DefaultRequestHeaders.Add("X-Api-Key", "dev-api-key-12345");
     }
 
@@ -28,8 +29,32 @@ public class AnalyticsEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
 
     private async Task SeedTestDataAsync()
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = _fixture.Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ParcelTrackingDbContext>();
+
+        // Seed addresses first (PostgreSQL enforces FK constraints)
+        var shipper = new Address
+        {
+            Street1 = "100 Sender St",
+            City = "Berlin",
+            State = "BE",
+            PostalCode = "10115",
+            CountryCode = "DE",
+            ContactName = "Shipper",
+            Phone = "+49-1"
+        };
+        var recipient = new Address
+        {
+            Street1 = "200 Receiver St",
+            City = "Munich",
+            State = "BY",
+            PostalCode = "80331",
+            CountryCode = "DE",
+            ContactName = "Recipient",
+            Phone = "+49-2"
+        };
+        db.Addresses.AddRange(shipper, recipient);
+        await db.SaveChangesAsync();
 
         // Create some test parcels with various statuses and service types
         var parcels = new List<Parcel>
@@ -39,8 +64,8 @@ public class AnalyticsEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
                 TrackingNumber = "PKG-ANALYTICS-001",
                 ServiceType = ServiceType.Standard,
                 Status = ParcelStatus.Delivered,
-                ShipperAddressId = 1,
-                RecipientAddressId = 2,
+                ShipperAddressId = shipper.Id,
+                RecipientAddressId = recipient.Id,
                 CreatedAt = DateTimeOffset.UtcNow.AddDays(-10),
                 ActualDeliveryDate = DateTimeOffset.UtcNow.AddDays(-8),
                 EstimatedDeliveryDate = DateTimeOffset.UtcNow.AddDays(-7),
@@ -51,8 +76,8 @@ public class AnalyticsEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
                 TrackingNumber = "PKG-ANALYTICS-002",
                 ServiceType = ServiceType.Express,
                 Status = ParcelStatus.InTransit,
-                ShipperAddressId = 1,
-                RecipientAddressId = 2,
+                ShipperAddressId = shipper.Id,
+                RecipientAddressId = recipient.Id,
                 CreatedAt = DateTimeOffset.UtcNow.AddDays(-5),
                 UpdatedAt = DateTimeOffset.UtcNow
             },
@@ -61,8 +86,8 @@ public class AnalyticsEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
                 TrackingNumber = "PKG-ANALYTICS-003",
                 ServiceType = ServiceType.Economy,
                 Status = ParcelStatus.Exception,
-                ShipperAddressId = 1,
-                RecipientAddressId = 2,
+                ShipperAddressId = shipper.Id,
+                RecipientAddressId = recipient.Id,
                 CreatedAt = DateTimeOffset.UtcNow.AddDays(-3),
                 UpdatedAt = DateTimeOffset.UtcNow
             }
@@ -116,7 +141,7 @@ public class AnalyticsEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
                 // Generate two different date ranges
                 var daysBack1 = faker.Random.Int(1, 60);
                 var daysBack2 = faker.Random.Int(1, 60);
-                
+
                 // Ensure they're different
                 while (daysBack2 == daysBack1)
                 {
@@ -299,7 +324,7 @@ public class AnalyticsEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
         // Verify response content
         var pipeline = await response.Content.ReadFromJsonAsync<List<PipelineStatusResponse>>();
         pipeline.Should().NotBeNull();
-        
+
         // Pipeline should include all status values
         var allStatuses = Enum.GetValues<ParcelStatus>();
         pipeline!.Should().HaveCount(allStatuses.Length,
@@ -311,7 +336,7 @@ public class AnalyticsEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
     {
         // Arrange
         await SeedTestDataAsync();
-        
+
         var from = DateTimeOffset.UtcNow.AddDays(-7);
         var to = DateTimeOffset.UtcNow;
 
@@ -321,7 +346,7 @@ public class AnalyticsEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        
+
         var stats = await response.Content.ReadFromJsonAsync<DeliveryStatsResponse>();
         stats.Should().NotBeNull();
         stats!.From.Should().BeCloseTo(from, TimeSpan.FromSeconds(1));
@@ -392,7 +417,7 @@ public class AnalyticsEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
     public async Task GetDeliveryStats_WithoutApiKey_Returns401()
     {
         // Arrange
-        var clientWithoutAuth = _factory.CreateClient();
+        var clientWithoutAuth = _fixture.Factory.CreateClient();
         // Don't add API key header
 
         // Act
@@ -407,7 +432,7 @@ public class AnalyticsEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
     public async Task GetExceptionReasons_WithoutApiKey_Returns401()
     {
         // Arrange
-        var clientWithoutAuth = _factory.CreateClient();
+        var clientWithoutAuth = _fixture.Factory.CreateClient();
         // Don't add API key header
 
         // Act
@@ -422,7 +447,7 @@ public class AnalyticsEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
     public async Task GetServiceBreakdown_WithoutApiKey_Returns401()
     {
         // Arrange
-        var clientWithoutAuth = _factory.CreateClient();
+        var clientWithoutAuth = _fixture.Factory.CreateClient();
         // Don't add API key header
 
         // Act
@@ -437,7 +462,7 @@ public class AnalyticsEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
     public async Task GetPipeline_WithoutApiKey_Returns401()
     {
         // Arrange
-        var clientWithoutAuth = _factory.CreateClient();
+        var clientWithoutAuth = _fixture.Factory.CreateClient();
         // Don't add API key header
         // Add Cache-Control: no-cache to bypass any cached responses
         clientWithoutAuth.DefaultRequestHeaders.Add("Cache-Control", "no-cache");
@@ -466,7 +491,7 @@ public class AnalyticsEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
 
         var stats = await response.Content.ReadFromJsonAsync<DeliveryStatsResponse>();
         stats.Should().NotBeNull("Response should deserialize to DeliveryStatsResponse");
-        
+
         // Verify all required fields are present
         stats!.TotalParcels.Should().BeGreaterThanOrEqualTo(0);
         stats.Delivered.Should().BeGreaterThanOrEqualTo(0);
@@ -492,7 +517,7 @@ public class AnalyticsEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
 
         var reasons = await response.Content.ReadFromJsonAsync<List<ExceptionReasonResponse>>();
         reasons.Should().NotBeNull("Response should deserialize to List<ExceptionReasonResponse>");
-        
+
         // If there are reasons, verify structure
         if (reasons!.Count > 0)
         {
@@ -521,7 +546,7 @@ public class AnalyticsEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
 
         var breakdown = await response.Content.ReadFromJsonAsync<List<ServiceBreakdownResponse>>();
         breakdown.Should().NotBeNull("Response should deserialize to List<ServiceBreakdownResponse>");
-        
+
         // If there are service types, verify structure
         if (breakdown!.Count > 0)
         {
@@ -529,7 +554,7 @@ public class AnalyticsEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
             {
                 service.ServiceType.Should().NotBeNullOrEmpty("ServiceType should have a value");
                 service.Count.Should().BeGreaterThan(0, "Count should be positive");
-                service.AverageDeliveryTimeHours.Should().BeGreaterThanOrEqualTo(0, 
+                service.AverageDeliveryTimeHours.Should().BeGreaterThanOrEqualTo(0,
                     "AverageDeliveryTimeHours should be non-negative");
             }
         }
@@ -551,16 +576,19 @@ public class AnalyticsEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
 
         var pipeline = await response.Content.ReadFromJsonAsync<List<PipelineStatusResponse>>();
         pipeline.Should().NotBeNull("Response should deserialize to List<PipelineStatusResponse>");
-        
+
         // Verify all status values are present
         var allStatuses = Enum.GetValues<ParcelStatus>();
         pipeline!.Should().HaveCount(allStatuses.Length,
             "Pipeline should include all ParcelStatus enum values");
-        
+
         foreach (var status in pipeline)
         {
             status.Status.Should().NotBeNullOrEmpty("Status should have a value");
             status.Count.Should().BeGreaterThanOrEqualTo(0, "Count should be non-negative");
         }
     }
+
+    public Task InitializeAsync() => _fixture.ResetDatabaseAsync();
+    public Task DisposeAsync() => Task.CompletedTask;
 }

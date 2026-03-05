@@ -5,15 +5,16 @@ using ParcelTracking.Application.DTOs;
 
 namespace ParcelTracking.Api.IntegrationTests.Parcels;
 
-public class ParcelsRegistrationTests : IClassFixture<ParcelTrackingWebAppFactory>
+[Collection("Database")]
+public class ParcelsRegistrationTests : IAsyncLifetime
 {
     private readonly HttpClient _client;
-    private readonly ParcelTrackingWebAppFactory _factory;
+    private readonly IntegrationTestFixture _fixture;
 
-    public ParcelsRegistrationTests(ParcelTrackingWebAppFactory factory)
+    public ParcelsRegistrationTests(IntegrationTestFixture fixture)
     {
-        _factory = factory;
-        _client = factory.CreateClient();
+        _fixture = fixture;
+        _client = fixture.Factory.CreateClient();
         _client.DefaultRequestHeaders.Add("X-Api-Key", "dev-api-key-12345");
     }
 
@@ -119,7 +120,7 @@ public class ParcelsRegistrationTests : IClassFixture<ParcelTrackingWebAppFactor
     [Fact]
     public async Task Register_WithoutApiKey_Returns401()
     {
-        using var anonClient = _factory.CreateClient();
+        using var anonClient = _fixture.Factory.CreateClient();
         var (shipperId, recipientId) = await ParcelTestHelpers.SeedAddressesAsync(_client);
         var request = ParcelTestHelpers.BuildRequest(shipperId, recipientId);
 
@@ -157,4 +158,7 @@ public class ParcelsRegistrationTests : IClassFixture<ParcelTrackingWebAppFactor
         parcel.ContentItems[0].HsCode.Should().Be("8471.30");
         parcel.ContentItems[0].CountryOfOrigin.Should().Be("CN");
     }
+
+    public Task InitializeAsync() => _fixture.ResetDatabaseAsync();
+    public Task DisposeAsync() => Task.CompletedTask;
 }

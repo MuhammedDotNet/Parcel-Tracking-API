@@ -6,17 +6,19 @@ using ParcelTracking.Application.DTOs;
 
 namespace ParcelTracking.Api.IntegrationTests;
 
-public class TrackingEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
+[Collection("Database")]
+public class TrackingEndpointTests : IAsyncLifetime
 {
     private readonly HttpClient _authedClient;
     private readonly HttpClient _anonClient;
 
-    public TrackingEndpointTests(ParcelTrackingWebAppFactory factory)
+    public TrackingEndpointTests(IntegrationTestFixture fixture)
     {
-        _authedClient = factory.CreateClient();
+        _fixture = fixture;
+        _authedClient = fixture.Factory.CreateClient();
         _authedClient.DefaultRequestHeaders.Add("X-Api-Key", "dev-api-key-12345");
 
-        _anonClient = factory.CreateClient();
+        _anonClient = fixture.Factory.CreateClient();
     }
 
     // ─── Helpers ────────────────────────────────────────────────────────────
@@ -126,4 +128,9 @@ public class TrackingEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
+
+    private readonly IntegrationTestFixture _fixture;
+
+    public Task InitializeAsync() => _fixture.ResetDatabaseAsync();
+    public Task DisposeAsync() => Task.CompletedTask;
 }

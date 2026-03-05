@@ -6,15 +6,16 @@ using ParcelTracking.Domain.Enums;
 
 namespace ParcelTracking.Api.IntegrationTests.Parcels;
 
-public class ParcelsSearchEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
+[Collection("Database")]
+public class ParcelsSearchEndpointTests : IAsyncLifetime
 {
     private readonly HttpClient _client;
-    private readonly ParcelTrackingWebAppFactory _factory;
+    private readonly IntegrationTestFixture _fixture;
 
-    public ParcelsSearchEndpointTests(ParcelTrackingWebAppFactory factory)
+    public ParcelsSearchEndpointTests(IntegrationTestFixture fixture)
     {
-        _factory = factory;
-        _client = factory.CreateClient();
+        _fixture = fixture;
+        _client = fixture.Factory.CreateClient();
         _client.DefaultRequestHeaders.Add("X-Api-Key", "dev-api-key-12345");
     }
 
@@ -246,4 +247,7 @@ public class ParcelsSearchEndpointTests : IClassFixture<ParcelTrackingWebAppFact
         result.Should().NotBeNull();
         result!.PageSize.Should().Be(10);
     }
+
+    public Task InitializeAsync() => _fixture.ResetDatabaseAsync();
+    public Task DisposeAsync() => Task.CompletedTask;
 }

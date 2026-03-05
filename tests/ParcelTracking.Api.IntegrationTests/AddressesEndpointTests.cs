@@ -5,13 +5,15 @@ using ParcelTracking.Application.DTOs;
 
 namespace ParcelTracking.Api.IntegrationTests;
 
-public class AddressesEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
+[Collection("Database")]
+public class AddressesEndpointTests : IAsyncLifetime
 {
     private readonly HttpClient _client;
 
-    public AddressesEndpointTests(ParcelTrackingWebAppFactory factory)
+    public AddressesEndpointTests(IntegrationTestFixture fixture)
     {
-        _client = factory.CreateClient();
+        _fixture = fixture;
+        _client = fixture.Factory.CreateClient();
         _client.DefaultRequestHeaders.Add("X-Api-Key", "dev-api-key-12345");
     }
 
@@ -192,4 +194,9 @@ public class AddressesEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
         var verifyResponse = await _client.GetAsync($"/api/addresses/{created.Id}");
         verifyResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    private readonly IntegrationTestFixture _fixture;
+
+    public Task InitializeAsync() => _fixture.ResetDatabaseAsync();
+    public Task DisposeAsync() => Task.CompletedTask;
 }

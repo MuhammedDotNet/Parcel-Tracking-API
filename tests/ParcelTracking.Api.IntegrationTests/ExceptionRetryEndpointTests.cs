@@ -10,15 +10,16 @@ using ParcelTracking.Infrastructure.Data;
 
 namespace ParcelTracking.Api.IntegrationTests;
 
-public class ExceptionRetryEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
+[Collection("Database")]
+public class ExceptionRetryEndpointTests : IAsyncLifetime
 {
     private readonly HttpClient _authedClient;
-    private readonly ParcelTrackingWebAppFactory _factory;
+    private readonly IntegrationTestFixture _fixture;
 
-    public ExceptionRetryEndpointTests(ParcelTrackingWebAppFactory factory)
+    public ExceptionRetryEndpointTests(IntegrationTestFixture fixture)
     {
-        _factory = factory;
-        _authedClient = factory.CreateClient();
+        _fixture = fixture;
+        _authedClient = fixture.Factory.CreateClient();
         _authedClient.DefaultRequestHeaders.Add("X-Api-Key", "dev-api-key-12345");
     }
 
@@ -91,7 +92,7 @@ public class ExceptionRetryEndpointTests : IClassFixture<ParcelTrackingWebAppFac
         // Update parcel status directly in DB if needed
         if (status != ParcelStatus.LabelCreated || deliveryAttempts > 0)
         {
-            using var scope = _factory.Services.CreateScope();
+            using var scope = _fixture.Factory.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<ParcelTrackingDbContext>();
             var entity = await db.Parcels.FindAsync(parcel!.Id);
             entity!.Status = status;
@@ -254,9 +255,8 @@ public class ExceptionRetryEndpointTests : IClassFixture<ParcelTrackingWebAppFac
     [Fact]
     public async Task GetExceptions_NoExceptions_ReturnsEmptyArray()
     {
-        // Use a fresh factory to avoid cross-test contamination
-        using var freshFactory = new ParcelTrackingWebAppFactory();
-        var client = freshFactory.CreateClient();
+        // Respawn ensures clean DB state via IAsyncLifetime
+        var client = _fixture.Factory.CreateClient();
         client.DefaultRequestHeaders.Add("X-Api-Key", "dev-api-key-12345");
 
         var response = await client.GetAsync("/api/parcels/exceptions");
@@ -390,4 +390,7 @@ public class ExceptionRetryEndpointTests : IClassFixture<ParcelTrackingWebAppFac
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
+
+    public Task InitializeAsync() => _fixture.ResetDatabaseAsync();
+    public Task DisposeAsync() => Task.CompletedTask;
 }

@@ -8,14 +8,15 @@ namespace ParcelTracking.Api.IntegrationTests;
 /// <summary>
 /// Integration tests for OpenAPI documentation endpoints
 /// </summary>
-public class OpenApiEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
+[Collection("Database")]
+public class OpenApiEndpointTests : IAsyncLifetime
 {
-    private readonly ParcelTrackingWebAppFactory _factory;
+    private readonly IntegrationTestFixture _fixture;
 
-    public OpenApiEndpointTests(ParcelTrackingWebAppFactory factory)
+    public OpenApiEndpointTests(IntegrationTestFixture fixture)
     {
-        _factory = factory;
-        var client = factory.CreateClient();
+        _fixture = fixture;
+        var client = fixture.Factory.CreateClient();
         client.DefaultRequestHeaders.Add("X-Api-Key", "dev-api-key-12345");
     }
 
@@ -23,7 +24,7 @@ public class OpenApiEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
     public async Task OpenApiEndpoint_ReturnsValidJsonDocument()
     {
         // Arrange
-        var client = _factory.CreateClient();
+        var client = _fixture.Factory.CreateClient();
 
         // Act
         var response = await client.GetAsync("/openapi/v1.json");
@@ -61,7 +62,7 @@ public class OpenApiEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
     public async Task ScalarUI_IsAccessibleInDevelopment()
     {
         // Arrange
-        var client = _factory.CreateClient();
+        var client = _fixture.Factory.CreateClient();
 
         // Act
         var response = await client.GetAsync("/scalar/v1");
@@ -80,7 +81,7 @@ public class OpenApiEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
     public async Task ScalarUI_ReturnsNotFoundInProduction()
     {
         // Arrange
-        var client = _factory.WithWebHostBuilder(builder =>
+        var client = _fixture.Factory.WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Production");
         }).CreateClient();
@@ -96,7 +97,7 @@ public class OpenApiEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
     public async Task OpenApiDocument_IncludesAllExpectedEndpoints()
     {
         // Arrange
-        var client = _factory.CreateClient();
+        var client = _fixture.Factory.CreateClient();
 
         // Act
         var response = await client.GetAsync("/openapi/v1.json");
@@ -117,4 +118,7 @@ public class OpenApiEndpointTests : IClassFixture<ParcelTrackingWebAppFactory>
         Assert.Contains(pathsList, p => p.Contains("tracking"));
         Assert.Contains(pathsList, p => p.Contains("analytics"));
     }
+
+    public Task InitializeAsync() => _fixture.ResetDatabaseAsync();
+    public Task DisposeAsync() => Task.CompletedTask;
 }
