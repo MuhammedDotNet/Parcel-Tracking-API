@@ -1,3 +1,7 @@
+@baseUrl = http://localhost:5244
+@apiKey = dev-api-key-12345
+@apiVersion = v1
+
 ###############################################################################
 # Parcel Tracking API - HTTP Collection for Manual Testing
 # 
@@ -5,14 +9,11 @@
 # rate limiting, and CORS preflight requests.
 #
 # Prerequisites:
-# - API running on http://localhost:5244
+# - API running on 
 # - Database seeded with test data
 # - API Key: dev-api-key-12345 (from appsettings.Development.json)
-###############################################################################
-
-@baseUrl = http://localhost:5244
-@apiKey = dev-api-key-12345
-@apiVersion = v1
+# #
+################################################################################
 
 ###############################################################################
 # HEALTH CHECKS
