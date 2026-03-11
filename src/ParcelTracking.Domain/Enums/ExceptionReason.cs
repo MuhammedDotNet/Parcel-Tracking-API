@@ -1,11 +1,14 @@
+using System.Text.Json.Serialization;
+
 namespace ParcelTracking.Domain.Enums;
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ExceptionReason
 {
-    AddressNotFound = 0,
-    RecipientUnavailable = 1,
-    DamagedInTransit = 2,
-    WeatherDelay = 3,
-    CustomsHold = 4,
-    RefusedByRecipient = 5
+    AddressNotFound,
+    RecipientUnavailable,
+    DamagedPackage,
+    WeatherDelay,
+    CustomsHold,
+    RefusedByRecipient
 }

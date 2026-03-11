@@ -5,4 +5,11 @@
     <Project Path="src/ParcelTracking.Domain/ParcelTracking.Domain.csproj" />
     <Project Path="src/ParcelTracking.Infrastructure/ParcelTracking.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ParcelTracking.Api.IntegrationTests/ParcelTracking.Api.IntegrationTests.csproj" />
+    <Project Path="tests/ParcelTracking.Application.UnitTests/ParcelTracking.Application.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/Элементы решения/">
+    <File Path="ParcelTracking.http" />
+  </Folder>
 </Solution>

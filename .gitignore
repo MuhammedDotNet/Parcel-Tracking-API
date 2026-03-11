@@ -62,3 +62,7 @@ appsettings.Local.json
 # Docker & Environment
 .env
 docker-compose.override.yml
+
+#NCrunch
+*.NCrunch
+.NCrunch_ParcelTracking

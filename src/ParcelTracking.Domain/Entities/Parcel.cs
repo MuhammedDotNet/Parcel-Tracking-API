@@ -39,6 +39,14 @@ public class Parcel
 
     // Dates
     public DateTimeOffset? EstimatedDeliveryDate { get; set; }
+
+    /// <summary>
+    /// IANA timezone ID for the delivery location (e.g. "America/Chicago").
+    /// Used to reconstruct local delivery time from UTC.
+    /// </summary>
+    [MaxLength(50)]
+    public string? DeliveryTimeZoneId { get; set; }
+
     public DateTimeOffset? ActualDeliveryDate { get; set; }
 
     // Delivery tracking

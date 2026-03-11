@@ -30,14 +30,16 @@ public class Address
 
     public bool IsResidential { get; set; }
 
+    [Required]
     [MaxLength(150)]
-    public string? ContactName { get; set; }
+    public string ContactName { get; set; } = string.Empty;
 
-    [MaxLength(200)]
+    [MaxLength(150)]
     public string? CompanyName { get; set; }
 
+    [Required]
     [MaxLength(20)]
-    public string? Phone { get; set; }
+    public string Phone { get; set; } = string.Empty;
 
     [MaxLength(254)]
     public string? Email { get; set; }

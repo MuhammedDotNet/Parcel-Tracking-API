@@ -51,10 +51,11 @@ namespace ParcelTracking.Infrastructure.Migrations
                         .HasColumnType("character varying(100)");
 
                     b.Property<string>("CompanyName")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
 
                     b.Property<string>("ContactName")
+                        .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
 
@@ -71,6 +72,7 @@ namespace ParcelTracking.Infrastructure.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<string>("Phone")
+                        .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
@@ -108,10 +110,16 @@ namespace ParcelTracking.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
                     b.Property<DateTimeOffset>("DeliveredAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("DeliveryLocation")
+                        .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
@@ -119,6 +127,7 @@ namespace ParcelTracking.Infrastructure.Migrations
                         .HasColumnType("integer");
 
                     b.Property<string>("ReceivedBy")
+                        .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
@@ -158,6 +167,10 @@ namespace ParcelTracking.Infrastructure.Migrations
 
                     b.Property<int>("DeliveryAttempts")
                         .HasColumnType("integer");
+
+                    b.Property<string>("DeliveryTimeZoneId")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
@@ -222,6 +235,18 @@ namespace ParcelTracking.Infrastructure.Migrations
 
                     b.HasIndex("TrackingNumber")
                         .IsUnique();
+
+                    b.HasIndex("CreatedAt", "Id")
+                        .HasDatabaseName("IX_Parcels_CreatedAt_Id");
+
+                    b.HasIndex("CreatedAt", "Status")
+                        .HasDatabaseName("IX_Parcels_CreatedAt_Status");
+
+                    b.HasIndex("EstimatedDeliveryDate", "Id")
+                        .HasDatabaseName("IX_Parcels_EstimatedDeliveryDate_Id");
+
+                    b.HasIndex("Status", "Id")
+                        .HasDatabaseName("IX_Parcels_Status_Id");
 
                     b.ToTable("Parcels");
                 });
@@ -349,9 +374,10 @@ namespace ParcelTracking.Infrastructure.Migrations
 
                     b.HasIndex("EventType");
 
-                    b.HasIndex("ParcelId");
+                    b.HasIndex("EventType", "Timestamp")
+                        .HasDatabaseName("IX_TrackingEvents_EventType_Timestamp");
 
-                    b.HasIndex("Timestamp");
+                    b.HasIndex("ParcelId", "Timestamp");
 
                     b.ToTable("TrackingEvents");
                 });

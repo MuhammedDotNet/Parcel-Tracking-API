@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
@@ -30,8 +32,7 @@ public class ApiKeyAuthenticationHandler
             .GetRequiredService<IConfiguration>()
             .GetValue<string>("Authentication:ApiKey");
 
-        if (string.IsNullOrEmpty(expectedKey)
-            || !string.Equals(providedKey, expectedKey, StringComparison.Ordinal))
+        if (string.IsNullOrEmpty(expectedKey) || !FixedTimeEquals(providedKey, expectedKey))
         {
             return Task.FromResult(
                 AuthenticateResult.Fail("Invalid API key."));
@@ -43,5 +44,13 @@ public class ApiKeyAuthenticationHandler
         var ticket = new AuthenticationTicket(principal, Scheme.Name);
 
         return Task.FromResult(AuthenticateResult.Success(ticket));
+    }
+
+    private static bool FixedTimeEquals(string provided, string expected)
+    {
+        var providedBytes = Encoding.UTF8.GetBytes(provided);
+        var expectedBytes = Encoding.UTF8.GetBytes(expected);
+
+        return CryptographicOperations.FixedTimeEquals(providedBytes, expectedBytes);
     }
 }

@@ -56,6 +56,20 @@ public class ParcelConfiguration : IEntityTypeConfiguration<Parcel>
         builder.HasIndex(p => p.ServiceType);
         builder.HasIndex(p => p.CreatedAt);
 
+        // Composite indexes for cursor-based pagination with deterministic ordering
+        builder.HasIndex(p => new { p.CreatedAt, p.Id })
+            .HasDatabaseName("IX_Parcels_CreatedAt_Id");
+
+        builder.HasIndex(p => new { p.EstimatedDeliveryDate, p.Id })
+            .HasDatabaseName("IX_Parcels_EstimatedDeliveryDate_Id");
+
+        builder.HasIndex(p => new { p.Status, p.Id })
+            .HasDatabaseName("IX_Parcels_Status_Id");
+
+        // Composite index for analytics queries
+        builder.HasIndex(p => new { p.CreatedAt, p.Status })
+            .HasDatabaseName("IX_Parcels_CreatedAt_Status");
+
         // Decimal precision
         builder.Property(p => p.Weight)
             .HasPrecision(10, 2);
@@ -71,5 +85,8 @@ public class ParcelConfiguration : IEntityTypeConfiguration<Parcel>
 
         builder.Property(p => p.DeclaredValue)
             .HasPrecision(12, 2);
+
+        builder.Property(p => p.DeliveryTimeZoneId)
+            .HasMaxLength(50);
     }
 }
