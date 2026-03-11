@@ -10,7 +10,6 @@ namespace ParcelTracking.Api.Controllers;
 /// </summary>
 [ApiController]
 [ApiVersion("1.0")]
-
 [Route("api/v{version:apiVersion}/[controller]")]
 [Authorize]
 [Tags("Analytics")]

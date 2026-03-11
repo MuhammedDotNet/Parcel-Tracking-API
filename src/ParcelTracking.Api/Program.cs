@@ -20,6 +20,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using System.Threading.RateLimiting;
 using ParcelTracking.Api.Middleware;
+using Microsoft.AspNetCore.Rewrite;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -252,6 +253,10 @@ if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
 
 // Request logging middleware - runs first to capture all requests
 app.UseMiddleware<RequestLoggingMiddleware>();
+
+// Rewrite unversioned API requests to v1 implicitly
+app.UseRewriter(new Microsoft.AspNetCore.Rewrite.RewriteOptions()
+    .AddRewrite(@"^api/(?!v\d+/?)(.*)", "api/v1/$1", skipRemainingRules: true));
 
 app.UseResponseCaching();
 app.UseExceptionHandler();
